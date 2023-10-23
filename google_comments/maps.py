@@ -181,6 +181,7 @@ class GooglePlaces(WebhookMixin):
         urls_seen_file = pathlib.Path(MEDIA_PATH / f'{filename}_urls_seen.csv')
         if not urls_seen_file.exists():
             urls_seen_file.touch()
+            logger.info(f'Created file: {filename}')
 
         self.driver.maximize_window()
         self.driver.get(url)
@@ -359,9 +360,13 @@ class GooglePlaces(WebhookMixin):
                     business_name=business_name,
                     pixels=pixels
                 )
-                current_scroll, scroll_height = self.driver.execute_script(
-                    scroll_bottom_script
-                )
+
+                try:
+                    current_scroll, scroll_height = self.driver.execute_script(
+                        scroll_bottom_script
+                    )
+                except:
+                    logger.error('Could not scroll to bottom on comments')
 
                 if current_scroll > 0:
                     if current_scroll in last_positions:
