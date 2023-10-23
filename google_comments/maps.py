@@ -459,7 +459,7 @@ class GooglePlaces(WebhookMixin):
             return gatherComments()
             """
             comments = self.driver.execute_script(comments_script)
-            logger.info('Collected {len(comments)} comments')
+            logger.info(f'Collected {len(comments)} comments')
 
             for comment in comments:
                 clean_comment = clean_dict(comment)
