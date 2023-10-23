@@ -1,0 +1,19 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Google Maps",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/maps.py",
+            "args": [
+                "https://www.google.com/maps/search/boulangerie+paul/@50.6317596,3.0044347,11z?entry=ttu"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
