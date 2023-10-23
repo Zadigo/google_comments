@@ -150,3 +150,10 @@ def text_parser(text):
             text = result.group(1)
             return float(text.replace(',', '.'))
     return text
+
+
+def check_url(url):
+    if '/maps/search/' not in url:
+        logger.error('url is not valid')
+        return False
+    return url

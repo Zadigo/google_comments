@@ -4,6 +4,7 @@ import csv
 import datetime
 import json
 import multiprocessing
+import pathlib
 import random
 import secrets
 import string
@@ -177,6 +178,9 @@ class GooglePlaces(WebhookMixin):
         self.is_running = True
 
         filename = f'{secrets.token_hex(5)}'
+        urls_seen_file = pathlib.Path(MEDIA_PATH / f'{filename}_urls_seen.csv')
+        if not urls_seen_file.exists():
+            urls_seen_file.touch()
 
         self.driver.maximize_window()
         self.driver.get(url)
@@ -480,28 +484,22 @@ class GooglePlaces(WebhookMixin):
         self.driver.quit()
 
 
-def check_url(url):
-    if '/maps/search/' not in url:
-        logger.error('url is not valid')
-        return False
-    return url
 
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser('Google Comments')
+#     parser.add_argument('url', help='Google maps url', type=str)
+#     namespace = parser.parse_args()
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Google Comments')
-    parser.add_argument('url', help='Google maps url', type=str)
-    namespace = parser.parse_args()
-
-    try:
-        checked_url = check_url(namespace.url)
-        if checked_url:
-            instance = GooglePlaces()
-            instance.start_spider(checked_url)
-            # process = multiprocessing.Process(
-            #     target=instance.start_spider,
-            #     args=[url]
-            # )
-            # process.start()
-            # process.join()
-    except KeyboardInterrupt:
-        logger.info('Program stopped')
+#     try:
+#         checked_url = check_url(namespace.url)
+#         if checked_url:
+#             instance = GooglePlaces()
+#             instance.start_spider(checked_url)
+#             # process = multiprocessing.Process(
+#             #     target=instance.start_spider,
+#             #     args=[url]
+#             # )
+#             # process.start()
+#             # process.join()
+#     except KeyboardInterrupt:
+#         logger.info('Program stopped')
