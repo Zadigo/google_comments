@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+redis = "*"
+nltk = "*"
+selenium = "*"
+requests = "*"
+beautifulsoup4 = "*"
+airtable = "*"
+quart = "*"
+quart-cors = "*"
+webdriver-manager = "*"
+gspread = "*"
+unidecode = "*"
+google-api-python-client = "*"
+google-auth-httplib2 = "*"
+google-auth-oauthlib = "*"
+pymemcache = "*"
+twisted = "*"
+lxml = "*"
+wordcloud = "*"
+matplotlib = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
