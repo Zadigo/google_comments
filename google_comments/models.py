@@ -118,7 +118,7 @@ class GoogleBusiness(BaseModel):
         try:
             result = re.search(
                 r'\@(\d+\.?\d+)\,?(\d+\.?\d+)',
-                substitute_url or self.feed_url
+                substitute_url or self.feed_url or self.url
             )
         except:
             return False

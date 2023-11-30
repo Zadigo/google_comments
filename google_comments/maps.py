@@ -563,7 +563,10 @@ class GooglePlace(SpiderMixin):
         result = re.search(r'(\d+)', details['number_of_reviews'])
         if result:
             details['number_of_reviews'] = result.group(1)
+
+        details = clean_dict(details)
         business = GoogleBusiness(**details)
+        business.get_gps_coordinates_from_url()
 
         # Click on the comments tab
         tab_list = self.driver.find_elements(
