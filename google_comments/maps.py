@@ -24,7 +24,7 @@ from google_comments import (MEDIA_PATH, check_url, clean_dict,
                              get_selenium_browser_instance, get_soup, logger,
                              simple_clean_text, text_parser)
 
-COMMENTS_SCROLL_ATTEMPTS = 2
+COMMENTS_SCROLL_ATTEMPTS = 30
 
 FEED_SCROLL_ATTEMPTS = 30
 
