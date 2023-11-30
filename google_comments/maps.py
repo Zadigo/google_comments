@@ -111,6 +111,46 @@ class SpiderMixin(WebhookMixin):
             return False
         time.sleep(5)
 
+    def sort_comments(self):
+        open_menu = """
+        try {
+            function sortComments() {
+                let sortButton = (
+                    document.querySelector('button[aria-label*="Sort reviews"][data-value^="Sort"]') ||
+                    document.querySelector('button[aria-label*="Trier les avis"][data-value^="Trier"]')
+                )
+                sortButton && sortButton.click()
+            }
+            sortComments()
+        } catch (e) {
+            console.error(e)
+        }
+        """
+
+        click_radio = """
+        try {
+            function clickRadio () {
+                let menu = document.querySelector('div[id="action-menu"][role="menu"]')
+                let menuOption = menu && menu.querySelectorAll('div[role="menuitemradio"]')
+
+                let newestRadio = menuOption[1]
+                newestRadio && newestRadio.click()
+            }
+            clickRadio()
+        } catch (e) {
+            console.error(e)
+        }
+        """
+        try:
+            self.driver.execute_script(open_menu)
+            time.sleep(2)
+            self.driver.execute_script(click_radio)
+        except:
+            logger.error('Could not sort comments')
+        else:
+            logger.info('Comments sorted')
+            time.sleep(3)  
+
     def flatten(self):
         """Flatten the saved dataclasses to dictionnaries"""
         return [business.as_json() for business in self.collected_businesses]
@@ -158,47 +198,7 @@ class GooglePlaces(SpiderMixin):
         async def sender():
             if self.websocket is not None:
                 await self.websocket.send({b'error': message})
-        asyncio.run(sender)
-
-    def sort_comments(self):
-        open_menu = """
-        try {
-            function sortComments() {
-                let sortButton = (
-                    document.querySelector('button[aria-label*="Sort reviews"][data-value^="Sort"]') ||
-                    document.querySelector('button[aria-label*="Trier les avis"][data-value^="Trier"]')
-                )
-                sortButton && sortButton.click()
-            }
-            sortComments()
-        } catch (e) {
-            console.error(e)
-        }
-        """
-
-        click_radio = """
-        try {
-            function clickRadio () {
-                let menu = document.querySelector('div[id="action-menu"][role="menu"]')
-                let menuOption = menu && menu.querySelectorAll('div[role="menuitemradio"]')
-
-                let newestRadio = menuOption[1]
-                newestRadio && newestRadio.click()
-            }
-            clickRadio()
-        } catch (e) {
-            console.error(e)
-        }
-        """
-        try:
-            self.driver.execute_script(open_menu)
-            time.sleep(2)
-            self.driver.execute_script(click_radio)
-        except:
-            logger.error('Could not sort comments')
-        else:
-            logger.error('Comments sorted')
-            time.sleep(3)        
+        asyncio.run(sender)      
 
     def start_spider(self, url):
         self.is_running = True
@@ -580,7 +580,9 @@ class GooglePlace(SpiderMixin):
             tab_list[1].click()
         except:
             return False
+        
         time.sleep(2)
+        self.sort_comments()
 
         business_name = details['name']
         if "'" in business_name:
