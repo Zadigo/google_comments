@@ -105,7 +105,10 @@ class SpiderMixin(WebhookMixin):
         let button = el && el.querySelector('button')
         button && button.click()
         """
-        self.driver.execute_script(script)
+        try:
+            self.driver.execute_script(script)
+        except:
+            return False
         time.sleep(5)
 
     def flatten(self):
@@ -512,9 +515,9 @@ class GooglePlace(SpiderMixin):
     def start_spider(self, url):
         self.is_running = True
 
-        filename = f'{secrets.token_hex(5)}'
-
         self.driver.maximize_window()
+
+        filename = f'{secrets.token_hex(5)}'
         self.driver.get(url)
 
         # 1. Click on the consent form
