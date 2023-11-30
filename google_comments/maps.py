@@ -5,6 +5,7 @@ import datetime
 import json
 import pathlib
 import random
+import re
 import secrets
 import string
 import sys
@@ -97,13 +98,25 @@ class SpiderMixin(WebhookMixin):
 
     def __hash__(self):
         return hash((self.temporary_id))
+    
+    def click_consent(self):
+        script = """
+        let el = document.querySelector('form:last-child')
+        let button = el && el.querySelector('button')
+        button && button.click()
+        """
+        self.driver.execute_script(script)
+        time.sleep(5)
 
-
-class GooglePlaces(SpiderMixin):
     def flatten(self):
         """Flatten the saved dataclasses to dictionnaries"""
         return [business.as_json() for business in self.collected_businesses]
+    
+    def start_spider(self, url):
+        pass
 
+
+class GooglePlaces(SpiderMixin):
     def get_dataframe(self):
         data = defaultdict(list)
         for business in self.flatten():
@@ -197,13 +210,7 @@ class GooglePlaces(SpiderMixin):
         self.driver.get(url)
 
         # 1. Click on the consent form
-        script = """
-        let el = document.querySelector('form:last-child')
-        let button = el && el.querySelector('button')
-        button && button.click()
-        """
-        self.driver.execute_script(script)
-        time.sleep(5)
+        self.click_consent()
 
         # 2. Scroll the feed
         count = 0
@@ -337,7 +344,7 @@ class GooglePlaces(SpiderMixin):
                 f"Created business: '{business.name} @ {business.address}'"
             )
 
-            # Collect the comments on the page
+            # Click on the comments tab
             tab_list = self.driver.find_elements(
                 By.CSS_SELECTOR,
                 '*[role="tablist"] button'
@@ -354,7 +361,7 @@ class GooglePlaces(SpiderMixin):
             if '"' in business_name:
                 business_name = business_name.replace('"', '\\"')
 
-            # Iteration for each comment
+            # Iteration for each review
 
             count = 0
             pixels = 2000
@@ -502,7 +509,223 @@ class GooglePlaces(SpiderMixin):
 
 
 class GooglePlace(SpiderMixin):
-    pass
+    def start_spider(self, url):
+        self.is_running = True
+
+        filename = f'{secrets.token_hex(5)}'
+
+        self.driver.maximize_window()
+        self.driver.get(url)
+
+        # 1. Click on the consent form
+        self.click_consent()
+
+        business_information_script = """
+        function getText (el) {
+            return el && el.textContent.trim()
+        }
+
+        function resolveXpath (xpath) {
+            return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+        }
+
+        function evaluateXpath (xpath) {
+            var result = resolveXpath(xpath)
+            return getText(result)
+        }
+
+        function getBusiness () {
+            let name = document.querySelector('div[role="main"]').ariaLabel
+            let address = evaluateXpath('//button[contains(@aria-label, "Adresse:")]')
+            let rating = document.querySelector('span[role="img"]').ariaLabel
+            let numberOfReviews = evaluateXpath('//div[contains(@class, "F7nice")]/span[2]')
+            let telephone = evaluateXpath('//button[contains(@data-tooltip, "Copier le numéro de téléphone")][contains(@aria-label, "téléphone:")]')
+            let category = evaluateXpath('//button[contains(@jsaction, "pane.rating.category")]')
+
+            let websiteElement = resolveXpath('//a[contains(@aria-label, "Site Web:")]')
+            let website = websiteElement && websiteElement.href
+
+            return {
+                name,
+                url: window.location.href,
+                address,
+                rating,
+                number_of_reviews: numberOfReviews,
+                telephone,
+                website,
+                additional_information: evaluateXpath('//div[contains(@aria-label, "Informations")][@role="region"][contains(@class, "m6QErb")]')
+            }
+        }
+
+        return getBusiness()
+        """
+        details = self.driver.execute_script(business_information_script)
+        result = re.search(r'(\d+)', details['number_of_reviews'])
+        if result:
+            details['number_of_reviews'] = result.group(1)
+        business = GoogleBusiness(**details)
+
+        # Click on the comments tab
+        tab_list = self.driver.find_elements(
+            By.CSS_SELECTOR,
+            '*[role="tablist"] button'
+        )
+        try:
+            tab_list[1].click()
+        except:
+            return False
+        time.sleep(2)
+
+        business_name = details['name']
+        if "'" in business_name:
+                business_name = business_name.replace("'", "\\'")
+
+        if '"' in business_name:
+            business_name = business_name.replace('"', '\\"')
+
+        count = 0
+        pixels = 2000
+        last_positions = []
+        return_position = 0
+        while count < COMMENTS_SCROLL_ATTEMPTS:
+            scroll_bottom_script = """
+            const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
+            const el = mainWrapper.querySelector('div[tabindex="-1"]')
+            el.scroll({ top: $pixels, left: 0, behavior: "instant" })
+            return [ el.scrollTop, el.scrollHeight ]
+            """
+            scroll_bottom_script = string.Template(scroll_bottom_script).substitute(
+                business_name=business_name,
+                pixels=pixels
+            )
+
+            try:
+                current_scroll, scroll_height = self.driver.execute_script(
+                    scroll_bottom_script
+                )
+            except Exception as e:
+                logger.error('Could not scroll to bottom on comments')
+                logger.critical(e)
+                return False
+
+            if current_scroll > 0:
+                if current_scroll in last_positions:
+                    last_positions = []
+                    break
+            last_positions.append(current_scroll)
+
+            # Increase the number of pixels to
+            # get when we reach a certain level
+            # of scrolling on the page
+            if current_scroll > 10000:
+                return_position = random.choice(last_positions[5:])
+
+            if current_scroll > 10000:
+                pixels = pixels + 8000
+            elif current_scroll > 20000:
+                pixels = pixels + 15000
+            else:
+                pixels = pixels + 2000
+
+            scroll_top_script = """
+            const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
+            const el = mainWrapper.querySelector('div[tabindex="-1"]')
+            el.scroll({ top: $return_position, left: 0, behavior: "smooth" })
+            """
+            scroll_top_script = string.Template(scroll_top_script).substitute(
+                business_name=business_name,
+                return_position=return_position
+            )
+            self.driver.execute_script(scroll_top_script)
+
+            count = count + 1
+            logger.debug(
+                f'Completed {count} of {COMMENTS_SCROLL_ATTEMPTS} scrolls')
+            time.sleep(5)
+
+        comments_script = """
+        function getText (el) {
+            return el && el.textContent.trim()
+        }
+
+        function resolveXpath (xpath) {
+            return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+        }
+
+        function evaluateXpath (xpath) {
+            var result = resolveXpath(xpath)
+            return getText(result)
+        }
+
+        function gatherComments() {
+            const commentsWrapper = document.querySelectorAll("div[data-review-id^='Ch'][class*='fontBodyMedium ']")
+
+            Array.from(commentsWrapper).forEach((item) => {
+                let dataReviewId = item.dataset['reviewId']
+                try {
+                    // Sometimes there is a read more button
+                    // that we have to click
+
+                    moreButton = (
+                        // Try the "Voir plus" button"
+                        item.querySelector('button[aria-label="Voir plus"]') ||
+                        // Try the "See more" button"
+                        item.querySelector('button[aria-label="See more"]') ||
+                        // On last resort try "aria-expanded"
+                        item.querySelector('button[aria-expanded="false"]')
+                    )
+                    moreButton.click()
+                } catch (e) {
+                    console.log('No "see more" button for review', dataReviewId)
+                }
+            })
+
+            return Array.from(commentsWrapper).map((item) => {
+                let dataReviewId = item.dataset['reviewId']
+
+                // Or, .rsqaWe
+                let period = getText(item.querySelector('.DU9Pgb'))
+                let rating = item.querySelector('span[role="img"]') && item.querySelector('span[role="img"]').ariaLabel
+                let text = getText(item.querySelector("*[class='MyEned']"))
+                let reviewerName = getText(item.querySelector('[class*="d4r55"]'))
+                let reviewerNumberOfReviews = getText(item.querySelector('*[class*="RfnDt"]'))
+
+                return {
+                    google_review_id: dataReviewId,
+                    text,
+                    rating,
+                    period,
+                    reviewer_name: reviewerName,
+                    reviewer_number_of_reviews: reviewerNumberOfReviews
+                }
+            })
+        }
+
+        return gatherComments()
+        """
+        comments = self.driver.execute_script(comments_script)
+        logger.info(f'Collected {len(comments)} comments')
+
+        for comment in comments:
+            clean_comment = clean_dict(comment)
+            instance = Review(**clean_comment)
+            business.reviews.append(instance)
+            self.COMMENTS.append(clean_comment)
+        self.collected_businesses.append(business)
+
+        with open(MEDIA_PATH / f'{filename}.json', mode='w') as f:
+            json.dump(self.flatten(), f)
+
+        with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp:
+            json.dump(self.COMMENTS, fp)
+
+        logger.info(f'Created files: {filename} and {filename}_comments')
+
+        self.trigger_webhooks(data=business.as_json())
+        logger.info('Completed comments collection')
+
+        self.is_running = False
+        self.driver.quit()
 
 
 if __name__ == '__main__':
@@ -510,10 +733,12 @@ if __name__ == '__main__':
     # parser.add_argument('url', help='Google maps url', type=str)
     # namespace = parser.parse_args()
     try:
-        checked_url = check_url('https://www.google.com/maps/search/uniq+kebab/@50.6475457,3.0751394,12z/data=!3m1!4b1?entry=ttu')
+        # checked_url = check_url('https://www.google.com/maps/search/uniq+kebab/@50.6475457,3.0751394,12z/data=!3m1!4b1?entry=ttu')
+        checked_url = "https://www.google.com/maps/place/L'Assiette+du+Boucher/@50.61916,3.048446,17z/data=!3m1!4b1!4m6!3m5!1s0x47c2d5e24be7fe57:0x2383c1f64971e1a5!8m2!3d50.6191566!4d3.0510209!16s%2Fg%2F11k0kfmxvb?entry=ttu"
         # checked_url = check_url(namespace.url)
         if checked_url:
-            instance = GooglePlaces()
+            # instance = GooglePlaces()
+            instance = GooglePlace()
             instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
             instance.start_spider(checked_url)
     except KeyboardInterrupt:
