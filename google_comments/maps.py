@@ -484,7 +484,6 @@ class GooglePlaces(SpiderMixin):
                 self.COMMENTS.append(clean_comment)
             self.collected_businesses.append(business)
 
-            # self.poll()
             with open(MEDIA_PATH / f'{filename}.json', mode='w') as f:
                 json.dump(self.flatten(), f)
 
