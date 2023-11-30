@@ -1,14 +1,14 @@
 import dataclasses
-import pathlib
-import pytz
-import re
 import datetime
+import pathlib
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
 from urllib.parse import unquote, urlparse
 
 import pandas
+import pytz
 
 
 class BaseModel:
@@ -37,8 +37,8 @@ class BaseModel:
 
 
 @dataclass
-class Comment(BaseModel):
-    review_id: str = None
+class Review(BaseModel):
+    google_review_id: str = None
     text: str = None
     rating: str = None
     period: str = None
@@ -46,7 +46,7 @@ class Comment(BaseModel):
     reviewer_number_of_reviews: str = None
 
     def __hash__(self):
-        return hash((self.review_id))
+        return hash((self.google_review_id))
 
     def as_json(self):
         return {field: getattr(self, field) for field in self.fields}
@@ -66,41 +66,41 @@ class GoogleBusiness(BaseModel):
     additional_information: str = None
     telephone: str = None
     website: str = None
-    comments: str = field(default_factory=list)
+    reviews: str = field(default_factory=list)
 
     def __hash__(self):
         return hash((self.name, self.url))
 
     def as_csv(self):
         rows = []
-        for comment in self.comments:
+        for review in self.reviews:
             row = [
                 self.name, self.url, self.address, self.rating,
-                self.number_of_reviews, comment['period'],
-                comment['text']
+                self.number_of_reviews, review['period'],
+                review['text']
             ]
             rows.append(row)
-        header = [*self.fields, 'comment_period', 'comment_text']
+        header = [*self.fields, 'review_period', 'review_text']
         return rows.insert(0, header)
 
     def as_json(self):
         data = {
             **{field: getattr(self, field) for field in self.fields},
-            'comments': [comment.as_json() for comment in self.comments]
+            'reviews': [review.as_json() for review in self.reviews]
         }
         data['date'] = str(data['date'])
         return data
 
     def as_dataframe(self):
         data = defaultdict(list)
-        for comment in self.comments:
-            data['review_id'].append(comment.review_id)
-            data['text'].append(comment.text)
-            data['rating'].append(comment.rating)
-            data['period'].append(comment.period)
-            data['reviewer_name'].append(comment.reviewer_name)
+        for review in self.reviews:
+            data['google_review_id'].append(review.google_review_id)
+            data['text'].append(review.text)
+            data['rating'].append(review.rating)
+            data['period'].append(review.period)
+            data['reviewer_name'].append(review.reviewer_name)
             data['reviewer_number_of_reviews'].append(
-                comment.reviewer_number_of_reviews
+                review.reviewer_number_of_reviews
             )
 
             data['date'].append(self.date)

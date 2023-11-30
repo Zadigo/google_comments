@@ -3,7 +3,6 @@ import asyncio
 import csv
 import datetime
 import json
-import multiprocessing
 import pathlib
 import random
 import secrets
@@ -14,17 +13,17 @@ from collections import defaultdict
 
 import pandas
 import pytz
+from google_comments.models import Review, GoogleBusiness
 from requests.auth import HTTPBasicAuth
 from requests.models import Request
 from requests.sessions import Session
 from selenium.webdriver.common.by import By
 
-from google_comments import (MEDIA_PATH, clean_dict,
+from google_comments import (MEDIA_PATH, check_url, clean_dict,
                              get_selenium_browser_instance, get_soup, logger,
                              simple_clean_text, text_parser)
-from google_comments.models import Comment, GoogleBusiness
 
-COMMENTS_SCROLL_ATTEMPTS = 30
+COMMENTS_SCROLL_ATTEMPTS = 2
 
 FEED_SCROLL_ATTEMPTS = 30
 
@@ -34,15 +33,15 @@ class WebhookMixin:
     session = Session()
 
     async def get_headers(self, **headers):
-        base_headers = {}
+        base_headers = {'content-type': 'application/json'}
         return base_headers | headers
 
-    async def create_requests(self):
+    async def create_requests(self, data={}):
         for url in self.webhook_urls:
-            request = Request('post',  url=url)
+            request = Request(method='post',  url=url, json=data)
             yield self.session.prepare_request(request)
 
-    async def send_requests(self, *, headers={}, credentials={}):
+    async def send_requests(self, *, data={}, headers={}, credentials={}):
         authentication = None
         if credentials:
             authentication = HTTPBasicAuth(**credentials)
@@ -50,21 +49,30 @@ class WebhookMixin:
         async def sender(request):
             try:
                 response = self.session.send(request, proxies=[])
-            except:
-                logger.error(f'Request failed for webhook: {request}')
+            except Exception as e:
+                logger.error(f'Request failed for webhook: {request.path_url}')
+                logger.error(' / '.join(e.args))
             else:
                 return response
 
         tasks = []
-        prepared_requests = await self.create_requests()
-        for request in prepared_requests:
-            request.headers = self.get_headers(**headers)
+        # prepared_requests = await 
+        async for request in self.create_requests(data=data):
+            request.headers = await self.get_headers(**headers)
             request.auth = authentication
             tasks.append(asyncio.create_task(sender(request)))
-        responses = asyncio.gather(*tasks)
+        
+        for task in asyncio.as_completed(tasks):
+            response = await task
+
+    def trigger_webhooks(self, *, data={}, **kwargs):
+        """Send data to the registered webhooks"""
+        async def main():
+            await self.send_requests(data=data, **kwargs)
+        asyncio.run(main())
 
 
-class GooglePlaces(WebhookMixin):
+class SpiderMixin(WebhookMixin):
     COMMENTS = []
     collected_businesses = []
 
@@ -90,6 +98,8 @@ class GooglePlaces(WebhookMixin):
     def __hash__(self):
         return hash((self.temporary_id))
 
+
+class GooglePlaces(SpiderMixin):
     def flatten(self):
         """Flatten the saved dataclasses to dictionnaries"""
         return [business.as_json() for business in self.collected_businesses]
@@ -97,14 +107,14 @@ class GooglePlaces(WebhookMixin):
     def get_dataframe(self):
         data = defaultdict(list)
         for business in self.flatten():
-            for comment in business['comments']:
-                data['review_id'].append(comment.review_id)
-                data['text'].append(comment['text'])
-                data['rating'].append(comment['rating'])
-                data['period'].append(comment.period)
-                data['reviewer_name'].append(comment['reviewer_name'])
+            for review in business['reviews']:
+                data['google_review_id'].append(review.google_review_id)
+                data['text'].append(review['text'])
+                data['rating'].append(review['rating'])
+                data['period'].append(review.period)
+                data['reviewer_name'].append(review['reviewer_name'])
                 data['reviewer_number_of_reviews'].append(
-                    comment['reviewer_number_of_reviews']
+                    review['reviewer_number_of_reviews']
                 )
 
                 data['date'].append(business['date'])
@@ -172,7 +182,7 @@ class GooglePlaces(WebhookMixin):
             logger.error('Could not sort comments')
         else:
             logger.error('Comments sorted')
-            time.sleep(3)
+            time.sleep(3)        
 
     def start_spider(self, url):
         self.is_running = True
@@ -186,6 +196,7 @@ class GooglePlaces(WebhookMixin):
         self.driver.maximize_window()
         self.driver.get(url)
 
+        # 1. Click on the consent form
         script = """
         let el = document.querySelector('form:last-child')
         let button = el && el.querySelector('button')
@@ -194,6 +205,7 @@ class GooglePlaces(WebhookMixin):
         self.driver.execute_script(script)
         time.sleep(5)
 
+        # 2. Scroll the feed
         count = 0
         pixels = 2000
         scrolls = []
@@ -230,8 +242,7 @@ class GooglePlaces(WebhookMixin):
         number_of_business_cards = len(elements)
         logger.info(f'Found {number_of_business_cards} business cards')
 
-        # Iteration for each business card
-
+        # 3. Iterate each business card
         iteration_count = 1
         while elements:
             element = elements.pop()
@@ -400,7 +411,7 @@ class GooglePlaces(WebhookMixin):
 
                 count = count + 1
                 logger.debug(
-                    f'Completed {count} of {FEED_SCROLL_ATTEMPTS} scrolls')
+                    f'Completed {count} of {COMMENTS_SCROLL_ATTEMPTS} scrolls')
                 time.sleep(5)
 
             comments_script = """
@@ -451,7 +462,7 @@ class GooglePlaces(WebhookMixin):
                     let reviewerNumberOfReviews = getText(item.querySelector('*[class*="RfnDt"]'))
 
                     return {
-                        review_id: dataReviewId,
+                        google_review_id: dataReviewId,
                         text,
                         rating,
                         period,
@@ -468,8 +479,8 @@ class GooglePlaces(WebhookMixin):
 
             for comment in comments:
                 clean_comment = clean_dict(comment)
-                instance = Comment(**clean_comment)
-                business.comments.append(instance)
+                instance = Review(**clean_comment)
+                business.reviews.append(instance)
                 self.COMMENTS.append(clean_comment)
             self.collected_businesses.append(business)
 
@@ -480,6 +491,8 @@ class GooglePlaces(WebhookMixin):
             with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp:
                 json.dump(self.COMMENTS, fp)
 
+            self.trigger_webhooks(data=business.as_json())
+
             logger.info(
                 f"Completed {iteration_count} of "
                 f"{number_of_business_cards} business cards"
@@ -489,22 +502,20 @@ class GooglePlaces(WebhookMixin):
         self.driver.quit()
 
 
+class GooglePlace(SpiderMixin):
+    pass
 
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser('Google Comments')
-#     parser.add_argument('url', help='Google maps url', type=str)
-#     namespace = parser.parse_args()
 
-#     try:
-#         checked_url = check_url(namespace.url)
-#         if checked_url:
-#             instance = GooglePlaces()
-#             instance.start_spider(checked_url)
-#             # process = multiprocessing.Process(
-#             #     target=instance.start_spider,
-#             #     args=[url]
-#             # )
-#             # process.start()
-#             # process.join()
-#     except KeyboardInterrupt:
-#         logger.info('Program stopped')
+if __name__ == '__main__':
+    # parser = argparse.ArgumentParser('Google Comments')
+    # parser.add_argument('url', help='Google maps url', type=str)
+    # namespace = parser.parse_args()
+    try:
+        checked_url = check_url('https://www.google.com/maps/search/uniq+kebab/@50.6475457,3.0751394,12z/data=!3m1!4b1?entry=ttu')
+        # checked_url = check_url(namespace.url)
+        if checked_url:
+            instance = GooglePlaces()
+            instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
+            instance.start_spider(checked_url)
+    except KeyboardInterrupt:
+        logger.info('Program stopped')

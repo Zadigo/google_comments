@@ -28,11 +28,10 @@ import multiprocessing
 import os
 
 import quart
+from google_comments.maps import GooglePlaces
 from quart import websocket
 from quart.app import asyncio
 from quart_cors import cors
-
-from google_comments.maps import GooglePlaces
 
 app = quart.Quart(__name__)
 app = cors(

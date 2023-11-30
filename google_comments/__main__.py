@@ -14,11 +14,5 @@ if __name__ == '__main__':
         if checked_url:
             instance = GooglePlaces()
             instance.start_spider(checked_url)
-            # process = multiprocessing.Process(
-            #     target=instance.start_spider,
-            #     args=[url]
-            # )
-            # process.start()
-            # process.join()
     except KeyboardInterrupt:
         logger.info('Program stopped')

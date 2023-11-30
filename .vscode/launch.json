@@ -10,7 +10,6 @@
             "request": "launch",
             "program": "${workspaceFolder}/maps.py",
             "args": [
-                "https://www.google.com/maps/search/boulangerie+paul/@50.6317596,3.0044347,11z?entry=ttu"
             ],
             "console": "integratedTerminal",
             "justMyCode": true

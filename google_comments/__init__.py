@@ -65,7 +65,7 @@ class Logger:
         )
         handler.setFormatter(log_format)
 
-        file_handler = logging.FileHandler('access.log')
+        file_handler = logging.FileHandler(PROJECT_PATH / 'access.log')
         logger.addHandler(file_handler)
         file_handler.setFormatter(log_format)
 
