@@ -27,9 +27,14 @@ from google_comments import (MEDIA_PATH, check_url, clean_dict,
                              get_selenium_browser_instance, get_soup, logger,
                              simple_clean_text, text_parser)
 
-COMMENTS_SCROLL_ATTEMPTS = int(os.getenv('COMMENTS_SCROLL_ATTEMPTS', 30))
+# COMMENTS_SCROLL_ATTEMPTS = int(os.getenv('COMMENTS_SCROLL_ATTEMPTS', 30))
 
-FEED_SCROLL_ATTEMPTS = int(os.getenv('FEED_SCROLL_ATTEMPTS', 30))
+# FEED_SCROLL_ATTEMPTS = int(os.getenv('FEED_SCROLL_ATTEMPTS', 30))
+
+
+COMMENTS_SCROLL_ATTEMPTS = 30
+
+FEED_SCROLL_ATTEMPTS = 30
 
 
 class WebhookMixin:
@@ -619,10 +624,12 @@ class GooglePlace(SpiderMixin):
                 logger.critical(e)
                 return False
 
-            if current_scroll > 0:
-                if current_scroll in last_positions:
-                    last_positions = []
-                    break
+            # FIXME: Check that this  does not
+            # break the scrolling
+            # if current_scroll > 0:
+            #     if current_scroll in last_positions:
+            #         last_positions = []
+            #         break
             last_positions.append(current_scroll)
 
             # Increase the number of pixels to
@@ -769,12 +776,12 @@ if __name__ == '__main__':
 
     result = check_url(namespace.name, namespace.url)
     if result:
-        instance = klass()
-        instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
         
         try:
+            instance = klass()
+            # instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
             instance.start_spider(namespace.url)
+        except Exception as e:
+            logger.critical(e)
         except KeyboardInterrupt:
             logger.info('Program stopped')
-        except Exception as e:
-            print(instance.COMMENTS)

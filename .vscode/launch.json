@@ -8,8 +8,10 @@
             "name": "Python: Google Maps",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/maps.py",
+            "program": "${workspaceFolder}/google_comments/maps.py",
             "args": [
+                "place",
+                "https://www.google.com/maps/place/Au+Fournil+de+Pierre/@50.663826,3.2013818,17z/data=!4m6!3m5!1s0x47c327d90b2087b1:0x4c97f38107dbfac8!8m2!3d50.6638226!4d3.2039567!16s%2Fg%2F11cs5xfqqk?entry=ttu"
             ],
             "console": "integratedTerminal",
             "justMyCode": true
