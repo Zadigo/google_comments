@@ -152,8 +152,12 @@ def text_parser(text):
     return text
 
 
-def check_url(url):
-    if '/maps/search/' not in url:
-        logger.error('url is not valid')
+def check_url(spider_type, url):
+    if spider_type == 'place' and '/maps/place/' not in url:
+        logger.error(f"url is not valid for {spider_type}")
         return False
-    return url
+
+    if spider_type == 'places' and '/maps/search/' not in url:
+        logger.error(f"url is not valid for {spider_type}")
+        return False
+    return True
