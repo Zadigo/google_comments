@@ -13,7 +13,6 @@ import string
 import sys
 import time
 from collections import defaultdict
-from turtle import st
 
 import pandas
 import pytz
@@ -23,7 +22,7 @@ from requests.models import Request
 from requests.sessions import Session
 from selenium.webdriver.common.by import By
 
-from google_comments import (MEDIA_PATH, check_url, clean_dict,
+from google_comments import (MEDIA_PATH, check_url, clean_dict, create_filename,
                              get_selenium_browser_instance, get_soup, logger,
                              simple_clean_text, text_parser)
 
@@ -32,7 +31,7 @@ from google_comments import (MEDIA_PATH, check_url, clean_dict,
 # FEED_SCROLL_ATTEMPTS = int(os.getenv('FEED_SCROLL_ATTEMPTS', 30))
 
 
-COMMENTS_SCROLL_ATTEMPTS = 30
+COMMENTS_SCROLL_ATTEMPTS = 50
 
 FEED_SCROLL_ATTEMPTS = 30
 
@@ -211,6 +210,7 @@ class GooglePlaces(SpiderMixin):
     def start_spider(self, url):
         self.is_running = True
 
+        # filename = f'{secrets.token_hex(5)}'
         filename = create_filename()
         urls_seen_file = pathlib.Path(MEDIA_PATH / f'{filename}_urls_seen.csv')
         if not urls_seen_file.exists():
@@ -524,6 +524,9 @@ class GooglePlace(SpiderMixin):
         self.is_running = True
 
         self.driver.maximize_window()
+        
+        # current_date = datetime.datetime.now(tz=pytz.UTC)
+        # filename = f'{secrets.token_hex(5)}_{str(current_date)}'
         filename = create_filename()
         self.driver.get(url)
 
@@ -593,7 +596,7 @@ class GooglePlace(SpiderMixin):
 
         business_name = details['name']
         if "'" in business_name:
-                business_name = business_name.replace("'", "\\'")
+            business_name = business_name.replace("'", "\\'")
 
         if '"' in business_name:
             business_name = business_name.replace('"', '\\"')
@@ -730,11 +733,11 @@ class GooglePlace(SpiderMixin):
             self.COMMENTS.append(clean_comment)
         self.collected_businesses.append(business)
 
-        with open(MEDIA_PATH / f'{filename}.json', mode='w') as f:
-            json.dump(self.flatten(), f)
+        with open(MEDIA_PATH / f'{filename}.json', mode='w') as fp1:
+            json.dump(self.flatten(), fp1)
 
-        with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp:
-            json.dump(self.COMMENTS, fp)
+        with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp2:
+            json.dump(self.COMMENTS, fp2)
 
         logger.info(f'Created files: {filename} and {filename}_comments')
 
