@@ -161,6 +161,23 @@ class SpiderMixin(WebhookMixin):
         """Flatten the saved dataclasses to dictionnaries"""
         return [business.as_json() for business in self.collected_businesses]
     
+    def comments_dataframe(self, *, save=True, columns=['text', 'rating']):
+        """Return the comments using only a specific set
+        of columns and eventually save the file"""
+        df = pandas.DataFrame(self.COMMENTS, columns=columns)
+
+        def remove_punctuation(text):
+            if text is None:
+                return None
+            return text.replace(';', ' ').replace(',', ' ')
+        df['text'] = df['text'].apply(remove_punctuation)
+        df = df.sort_values('text')
+        
+        if save:
+            filename = create_filename(suffix='clean_comments')
+            df.to_csv(filename, index=False, encoding='utf-8')
+        return df
+    
     def start_spider(self, url):
         pass
 
