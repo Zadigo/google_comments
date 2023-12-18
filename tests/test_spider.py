@@ -1,7 +1,7 @@
 import subprocess
 import unittest
 
-TEST_URL = 'https://www.google.com/maps/place/CHAPON+CHOCOLATERIE/@48.881444,2.2358281,17z/data=!3m1!4b1!4m6!3m5!1s0x47e6650186a902d5:0x17a3c197aff7990b!8m2!3d48.8814405!4d2.238403!16s%2Fg%2F11stsq4rdf?entry=ttu'
+TEST_URL = 'https://www.google.com/maps/place/Chocolat+Chapon/@48.8973502,2.0882916,17z/data=!4m15!1m8!3m7!1s0x47e6882de959a627:0x52a8c365babfeeed!2s18+Rue+de+Poissy,+78100+Saint-Germain-en-Laye!3b1!8m2!3d48.8973467!4d2.0908665!16s%2Fg%2F11c3q3x11y!3m5!1s0x47e689f6f8cf3925:0x9ab72e2475c1a6d0!8m2!3d48.8973467!4d2.0908665!16s%2Fg%2F11vjmvncpn?entry=ttu'
 
 
 class TestSpider(unittest.TestCase):
