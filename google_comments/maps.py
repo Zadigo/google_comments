@@ -789,9 +789,9 @@ class GooglePlace(SpiderMixin):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Google reviews')
-    parser.add_argument('name', type=str, help='The name of the review parser to user', choices=['place', 'places'])
+    parser.add_argument('name', type=str, help='The name of the review parser to use', choices=['place', 'places'])
     parser.add_argument('url', type=str, help='The url to visit')
-    parser.add_argument('-w', '--webhook', type=str, help='Webhook to send data')
+    parser.add_argument('-w', '--webhook', type=str, help='The webhook to use in order to send data')
     namespace = parser.parse_args()
 
     if namespace.name == 'place':
