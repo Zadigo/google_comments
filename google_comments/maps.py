@@ -3,11 +3,10 @@ import asyncio
 import csv
 import datetime
 import json
-import pathlib
 import os
+import pathlib
 import random
 import re
-import os
 import secrets
 import string
 import sys
@@ -16,15 +15,15 @@ from collections import defaultdict
 
 import pandas
 import pytz
-from google_comments.models import Review, GoogleBusiness
 from requests.auth import HTTPBasicAuth
 from requests.models import Request
 from requests.sessions import Session
 from selenium.webdriver.common.by import By
 
-from google_comments import (MEDIA_PATH, check_url, clean_dict, create_filename,
-                             get_selenium_browser_instance, get_soup, logger,
-                             simple_clean_text, text_parser)
+from google_comments import (MEDIA_PATH, check_url, clean_dict,
+                             create_filename, get_selenium_browser_instance,
+                             get_soup, logger, simple_clean_text, text_parser)
+from google_comments.models import GoogleBusiness, Review
 
 # COMMENTS_SCROLL_ATTEMPTS = int(os.getenv('COMMENTS_SCROLL_ATTEMPTS', 30))
 
