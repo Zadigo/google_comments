@@ -546,7 +546,12 @@ class GooglePlace(SpiderMixin):
         }
 
         function getBusiness () {
-            let name = document.querySelector('div[role="main"]').ariaLabel
+            let name = (
+                document.querySelector('div[role="main"]').ariaLabel ||
+                // As fallback, get all [role="main"] and only select the one with an
+                // AriaLabel to get business name
+                Array.from(document.querySelectorAll('div[role="main"][aria-label]'))[0].ariaLabel
+            )
             let address = evaluateXpath('//button[contains(@aria-label, "Adresse:")]')
             let rating = document.querySelector('span[role="img"]').ariaLabel
             let numberOfReviews = evaluateXpath('//div[contains(@class, "F7nice")]/span[2]')
@@ -593,11 +598,20 @@ class GooglePlace(SpiderMixin):
         self.sort_comments()
 
         business_name = details['name']
-        if "'" in business_name:
-            business_name = business_name.replace("'", "\\'")
+        try:
+            # When we could not get a business
+            # name, just safely return otherwsise
+            # we get a TypeError when trying to
+            # to check quotes in the value with
+            # the conditional IF
+            if "'" in business_name:
+                business_name = business_name.replace("'", "\\'")
 
-        if '"' in business_name:
-            business_name = business_name.replace('"', '\\"')
+            if '"' in business_name:
+                business_name = business_name.replace('"', '\\"')
+        except TypeError as e:
+            logger.error(f"Value for business name is None: {e}")
+            return False
 
         count = 0
         pixels = 2000
@@ -624,12 +638,14 @@ class GooglePlace(SpiderMixin):
                 logger.critical(e)
                 return False
 
-            # FIXME: Check that this  does not
-            # break the scrolling
-            # if current_scroll > 0:
-            #     if current_scroll in last_positions:
-            #         last_positions = []
-            #         break
+            if current_scroll > 0:
+                # When the current_scroll is in the last
+                # three positions, we can safely break
+                # the looop otherwise we'll have to
+                # to the max of COMMENTS_SCROLL_ATTEMPTS
+                if current_scroll in last_positions[:3]:
+                    last_positions = []
+                    break
             last_positions.append(current_scroll)
 
             # Increase the number of pixels to
@@ -658,7 +674,9 @@ class GooglePlace(SpiderMixin):
 
             count = count + 1
             logger.debug(
-                f'Completed {count} of {COMMENTS_SCROLL_ATTEMPTS} scrolls')
+                f"Completed {count} of "
+                f"{COMMENTS_SCROLL_ATTEMPTS} scrolls"
+            )
             time.sleep(5)
 
         comments_script = """
@@ -728,6 +746,13 @@ class GooglePlace(SpiderMixin):
             clean_comment = clean_dict(comment)
             instance = Review(**clean_comment)
             business.reviews.append(instance)
+            
+            text = clean_comment['text']
+            if text is not None:
+                text1 = text.replace(';', ' ')
+                text2 = text1.replace(',', ' ')
+                clean_comment['text'] = text2
+
             self.COMMENTS.append(clean_comment)
         self.collected_businesses.append(business)
 
