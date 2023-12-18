@@ -1,9 +1,12 @@
 import dataclasses
+import datetime
 import logging
 import pathlib
 import re
+import secrets
 
 import dotenv
+import pytz
 import unidecode
 from bs4 import BeautifulSoup
 from selenium.webdriver import Edge, EdgeOptions
@@ -161,3 +164,15 @@ def check_url(spider_type, url):
         logger.error(f"url is not valid for {spider_type}")
         return False
     return True
+
+
+def create_filename(*, prefix=None, suffix=None, include_date=True):
+    filename = secrets.token_hex(nbytes=5)
+    if prefix is not None:
+        filename = f'{prefix}_{filename}'
+    if suffix is not None:
+        filename = f'{filename}_{suffix}'
+    if include_date:
+        current_date = datetime.datetime.now(tz=pytz.UTC).date()
+        filename = f'{filename}_{current_date}'
+    return filename
