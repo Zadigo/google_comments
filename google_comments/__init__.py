@@ -176,3 +176,8 @@ def create_filename(*, prefix=None, suffix=None, include_date=True):
         current_date = datetime.datetime.now(tz=pytz.UTC).date()
         filename = f'{filename}_{current_date}'
     return filename
+
+
+async def write_json_file(filename, data):
+    with open(MEDIA_PATH / filename, mode='w', encoding='utf-8') as f:
+        json.dump(data, f)
