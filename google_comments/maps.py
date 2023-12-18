@@ -403,10 +403,13 @@ class GooglePlaces(SpiderMixin):
                 except:
                     logger.error('Could not scroll to bottom on comments')
 
-                if current_scroll > 0:
-                    if current_scroll in last_positions:
-                        last_positions = []
-                        break
+                # When the current_scroll is in the last
+                # three positions, we can safely break
+                # the looop otherwise we'll have to
+                # to the max of COMMENTS_SCROLL_ATTEMPTS
+                if current_scroll in last_positions[:3]:
+                    last_positions = []
+                    break
                 last_positions.append(current_scroll)
 
                 # Increase the number of pixels to
