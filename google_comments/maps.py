@@ -161,7 +161,7 @@ class SpiderMixin(WebhookMixin):
         """Flatten the saved dataclasses to dictionnaries"""
         return [business.as_json() for business in self.collected_businesses]
     
-    def comments_dataframe(self, *, save=True, columns=['text', 'rating']):
+    def create_comments_dataframe(self, *, save=True, columns=['text', 'rating']):
         """Return the comments using only a specific set
         of columns and eventually save the file"""
         df = pandas.DataFrame(self.COMMENTS, columns=columns)
@@ -794,6 +794,7 @@ class GooglePlace(SpiderMixin):
 
         with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp2:
             json.dump(self.COMMENTS, fp2)
+        self.create_comments_dataframe()
 
         logger.info(f'Created files: {filename} and {filename}_comments')
 
