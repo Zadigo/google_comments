@@ -211,7 +211,7 @@ class GooglePlaces(SpiderMixin):
     def start_spider(self, url):
         self.is_running = True
 
-        filename = f'{secrets.token_hex(5)}'
+        filename = create_filename()
         urls_seen_file = pathlib.Path(MEDIA_PATH / f'{filename}_urls_seen.csv')
         if not urls_seen_file.exists():
             urls_seen_file.touch()
@@ -524,8 +524,7 @@ class GooglePlace(SpiderMixin):
         self.is_running = True
 
         self.driver.maximize_window()
-
-        filename = f'{secrets.token_hex(5)}'
+        filename = create_filename()
         self.driver.get(url)
 
         # 1. Click on the consent form
