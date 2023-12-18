@@ -365,9 +365,12 @@ class GooglePlaces(SpiderMixin):
                 continue
             time.sleep(2)
 
-            if business_name is None:
-                logger.info(f"Business name not found for url: {url}")
-                continue
+            # TODO: Check if this potentially
+            # breaks the code when business_name
+            # is None
+            # if business_name is None:
+            #     logger.info(f"Business name not found for url: {url}")
+            #     continue
 
             if "'" in business_name:
                 business_name = business_name.replace("'", "\\'")
