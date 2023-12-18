@@ -525,8 +525,6 @@ class GooglePlace(SpiderMixin):
 
         self.driver.maximize_window()
         
-        # current_date = datetime.datetime.now(tz=pytz.UTC)
-        # filename = f'{secrets.token_hex(5)}_{str(current_date)}'
         filename = create_filename()
         self.driver.get(url)
 
