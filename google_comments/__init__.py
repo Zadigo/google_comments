@@ -173,7 +173,8 @@ def create_filename(*, prefix=None, suffix=None, include_date=True):
     if suffix is not None:
         filename = f'{filename}_{suffix}'
     if include_date:
-        current_date = datetime.datetime.now(tz=pytz.UTC).date()
+        current_date = datetime.datetime.now(tz=pytz.UTC).date().strftime('%Y-%m-%d %H:%M')
+        date_string = str(current_date).replace(' ', '-').replace(':', '_')
         filename = f'{filename}_{current_date}'
     return filename
 
