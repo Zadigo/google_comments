@@ -155,7 +155,7 @@ class SpiderMixin(WebhookMixin):
             logger.error('Could not sort comments')
         else:
             logger.info('Comments sorted')
-            time.sleep(3)  
+            time.sleep(3)
 
     def flatten(self):
         """Flatten the saved dataclasses to dictionnaries"""
@@ -172,7 +172,7 @@ class SpiderMixin(WebhookMixin):
             return text.replace(';', ' ').replace(',', ' ')
         df['text'] = df['text'].apply(remove_punctuation)
         df = df.sort_values('text')
-        
+
         if save:
             filename = create_filename(suffix='clean_comments')
             df.to_csv(filename, index=False, encoding='utf-8')
