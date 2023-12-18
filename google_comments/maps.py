@@ -788,22 +788,6 @@ class GooglePlace(SpiderMixin):
 
 
 if __name__ == '__main__':
-    # # parser = argparse.ArgumentParser('Google Comments')
-    # # parser.add_argument('url', help='Google maps url', type=str)
-    # # namespace = parser.parse_args()
-    # try:
-    #     # checked_url = check_url('https://www.google.com/maps/search/uniq+kebab/@50.6475457,3.0751394,12z/data=!3m1!4b1?entry=ttu')
-    #     checked_url = "https://www.google.com/maps/place/L'Assiette+du+Boucher/@50.61916,3.048446,17z/data=!3m1!4b1!4m6!3m5!1s0x47c2d5e24be7fe57:0x2383c1f64971e1a5!8m2!3d50.6191566!4d3.0510209!16s%2Fg%2F11k0kfmxvb?entry=ttu"
-    #     # checked_url = check_url(namespace.url)
-    #     if checked_url:
-    #         # instance = GooglePlaces()
-    #         instance = GooglePlace()
-    #         instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
-    #         instance.start_spider(checked_url)
-    # except KeyboardInterrupt:
-    #     logger.info('Program stopped')
-
-
     parser = argparse.ArgumentParser('Google reviews')
     parser.add_argument('name', type=str, help='The name of the review parser to user', choices=['place', 'places'])
     parser.add_argument('url', type=str, help='The url to visit')
