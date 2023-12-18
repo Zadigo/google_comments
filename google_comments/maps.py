@@ -365,6 +365,10 @@ class GooglePlaces(SpiderMixin):
                 continue
             time.sleep(2)
 
+            if business_name is None:
+                logger.info(f"Business name not found for url: {url}")
+                continue
+
             if "'" in business_name:
                 business_name = business_name.replace("'", "\\'")
 
@@ -496,6 +500,13 @@ class GooglePlaces(SpiderMixin):
 
             for comment in comments:
                 clean_comment = clean_dict(comment)
+
+                text = clean_comment['text']
+                if text is not None:
+                    text1 = text.replace(';', ' ')
+                    text2 = text1.replace(',', ' ')
+                    clean_comment['text'] = text2
+
                 instance = Review(**clean_comment)
                 business.reviews.append(instance)
                 self.COMMENTS.append(clean_comment)
