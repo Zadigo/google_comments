@@ -23,20 +23,21 @@ MEDIA_PATH = PROJECT_PATH / 'media'
 dotenv.load_dotenv(PROJECT_PATH / '.env')
 
 
-def simple_clean_text(text):
+def simple_clean_text(text, remove_accents=True):
     if text is None:
         return text
     else:
-        text = unidecode.unidecode(str(text).strip())
+        if remove_accents:
+            text = unidecode.unidecode(str(text).strip())
         tokens = text.split(' ')
         return ' '.join(filter(lambda x: x != '', tokens))
 
 
 def clean_dict(item):
-    def clean_value(value):
+    def clean_value(value, remove_accents=True):
         text = value.encode('utf-8').decode()
         text = text.replace('\n', '')
-        return simple_clean_text(text)
+        return simple_clean_text(text, remove_accents=remove_accents)
 
     if dataclasses.is_dataclass(item):
         for field in item.fields:
@@ -48,7 +49,10 @@ def clean_dict(item):
             if value is None:
                 new_dict[key] = value
             else:
-                new_dict[key] = clean_value(value)
+                if key == 'name':
+                    new_dict[key] = clean_value(value, remove_accents=False)
+                else:
+                    new_dict[key] = clean_value(value)
         return new_dict
 
 

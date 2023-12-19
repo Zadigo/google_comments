@@ -672,7 +672,10 @@ class GooglePlace(SpiderMixin):
                     scroll_bottom_script
                 )
             except Exception as e:
-                logger.error('Could not scroll to bottom on comments')
+                logger.error(
+                    "Could not scroll the comments container "
+                    "because the related section could not be found"
+                )
                 logger.critical(e)
                 return False
 
@@ -681,7 +684,7 @@ class GooglePlace(SpiderMixin):
                 # three positions, we can safely break
                 # the looop otherwise we'll have to
                 # to the max of COMMENTS_SCROLL_ATTEMPTS
-                if current_scroll in last_positions[:3]:
+                if current_scroll in last_positions[len(last_positions) - 3:]:
                     last_positions = []
                     break
             last_positions.append(current_scroll)
