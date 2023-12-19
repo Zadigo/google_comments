@@ -422,14 +422,15 @@ class GooglePlaces(SpiderMixin):
                     )
                 except:
                     logger.error('Could not scroll to bottom on comments')
-
-                # When the current_scroll is in the last
-                # three positions, we can safely break
-                # the looop otherwise we'll have to
-                # to the max of COMMENTS_SCROLL_ATTEMPTS
-                if current_scroll in last_positions[:3]:
-                    last_positions = []
-                    break
+                
+                if current_scroll > 0:
+                    # When the current_scroll is in the last
+                    # three positions, we can safely break
+                    # the looop otherwise we'll have to
+                    # to the max of COMMENTS_SCROLL_ATTEMPTS
+                    if current_scroll in last_positions[:3]:
+                        last_positions = []
+                        break
                 last_positions.append(current_scroll)
 
                 # Increase the number of pixels to
@@ -543,6 +544,7 @@ class GooglePlaces(SpiderMixin):
 
             with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp:
                 json.dump(self.COMMENTS, fp)
+                
             self.create_comments_dataframe()
             self.trigger_webhooks(data=business.as_json())
 
@@ -798,10 +800,9 @@ class GooglePlace(SpiderMixin):
         with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp2:
             json.dump(self.COMMENTS, fp2)
         self.create_comments_dataframe()
+        self.trigger_webhooks(data=business.as_json())
 
         logger.info(f'Created files: {filename} and {filename}_comments')
-
-        self.trigger_webhooks(data=business.as_json())
         logger.info('Completed comments collection')
 
         self.is_running = False
