@@ -157,26 +157,33 @@ def text_parser(text):
 
 def check_url(spider_type, url):
     if spider_type == 'place' and '/maps/place/' not in url:
-        logger.error(f"url is not valid for {spider_type}. Url should contain /maps/place/")
+        logger.error(
+            f"url is not valid for {spider_type}. "
+            "Url should contain /maps/place/"
+        )
         return False
 
     if spider_type == 'places' and '/maps/search/' not in url:
-        logger.error(f"url is not valid for {spider_type}. Url should contain /maps/search/")
+        logger.error(
+            f"url is not valid for {spider_type}. "
+            "Url should contain /maps/search/"
+        )
         return False
     return True
 
 
 def create_filename(*, prefix=None, suffix=None, include_date=True):
     filename = secrets.token_hex(nbytes=5)
-    
+
     if prefix is not None:
         filename = f'{prefix}_{filename}'
-    
+
     if suffix is not None:
         filename = f'{filename}_{suffix}'
 
     if include_date:
-        current_date = datetime.datetime.now(tz=pytz.UTC).date().strftime('%Y-%m-%d %H:%M')
+        current_date = datetime.datetime.now(
+            tz=pytz.UTC).date().strftime('%Y-%m-%d %H:%M')
         date_string = str(current_date).replace(' ', '-').replace(':', '_')
         filename = f'{filename}_{date_string}'
     return filename
