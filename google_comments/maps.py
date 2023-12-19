@@ -175,7 +175,11 @@ class SpiderMixin(WebhookMixin):
 
         if save:
             filename = create_filename(suffix='clean_comments')
-            df.to_csv(filename, index=False, encoding='utf-8')
+            df.to_csv(
+                MEDIA_PATH / f'{filename}.csv', 
+                index=False, 
+                encoding='utf-8'
+            )
         return df
     
     def start_spider(self, url):
@@ -226,7 +230,6 @@ class GooglePlaces(SpiderMixin):
     def start_spider(self, url):
         self.is_running = True
 
-        # filename = f'{secrets.token_hex(5)}'
         filename = create_filename()
         urls_seen_file = pathlib.Path(MEDIA_PATH / f'{filename}_urls_seen.csv')
         if not urls_seen_file.exists():
@@ -540,7 +543,7 @@ class GooglePlaces(SpiderMixin):
 
             with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp:
                 json.dump(self.COMMENTS, fp)
-
+            self.create_comments_dataframe()
             self.trigger_webhooks(data=business.as_json())
 
             logger.info(
