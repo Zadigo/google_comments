@@ -168,14 +168,17 @@ def check_url(spider_type, url):
 
 def create_filename(*, prefix=None, suffix=None, include_date=True):
     filename = secrets.token_hex(nbytes=5)
+    
     if prefix is not None:
         filename = f'{prefix}_{filename}'
+    
     if suffix is not None:
         filename = f'{filename}_{suffix}'
+
     if include_date:
         current_date = datetime.datetime.now(tz=pytz.UTC).date().strftime('%Y-%m-%d %H:%M')
         date_string = str(current_date).replace(' ', '-').replace(':', '_')
-        filename = f'{filename}_{current_date}'
+        filename = f'{filename}_{date_string}'
     return filename
 
 
