@@ -828,10 +828,15 @@ class GooglePlace(SpiderMixin):
     def iterate_urls(self):
         """From a file containing a set of Google url places,
         iterate and extract the comments for each Google Place"""
+        try:
             df = pandas.read_csv(
                 MEDIA_PATH / 'google_place_urls.csv',
                 encoding='utf-8'
             )
+        except FileNotFoundError:
+            logger.error(f"{self.__class__.__name__} expects a google_place_urls csv file")
+            return False
+        
         for item in df.itertuples(name='GooglePlaces'):
             try:
                 self.start_spider(item.url)
