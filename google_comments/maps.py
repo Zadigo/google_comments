@@ -843,6 +843,7 @@ class GooglePlace(SpiderMixin):
                 with open(MEDIA_PATH / 'completed_urls.csv', mode='w', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow([item.url])
+                time.sleep(random.randrange(4, 8))
 
 
 class SearchLinks(SpiderMixin):
