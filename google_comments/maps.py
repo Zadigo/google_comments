@@ -598,8 +598,8 @@ class GooglePlace(SpiderMixin):
         self.is_running = True
 
         self.driver.maximize_window()
-        
-        filename = create_filename()
+
+        self.filename = filename = create_filename()
         self.driver.get(url)
 
         # 1. Click on the consent form
