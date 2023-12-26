@@ -11,7 +11,7 @@ import secrets
 import string
 import sys
 import time
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import pandas
 import pytz
@@ -19,7 +19,8 @@ from requests.auth import HTTPBasicAuth
 from requests.models import Request
 from requests.sessions import Session
 from selenium.webdriver.common.by import By
-
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from google_comments import (MEDIA_PATH, check_url, clean_dict,
                              create_filename, get_selenium_browser_instance,
                              get_soup, logger, simple_clean_text, text_parser)
@@ -63,12 +64,12 @@ class WebhookMixin:
                 return response
 
         tasks = []
-        # prepared_requests = await 
+        # prepared_requests = await
         async for request in self.create_requests(data=data):
             request.headers = await self.get_headers(**headers)
             request.auth = authentication
             tasks.append(asyncio.create_task(sender(request)))
-        
+
         for task in asyncio.as_completed(tasks):
             response = await task
 
@@ -104,6 +105,8 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
         self.driver = get_selenium_browser_instance()
         self.websocket = None
         self.seen_urls_outputted = False
+        self.filename = None
+        self.comments_scroll_counter = Counter()
         logger.info('Starting spider')
 
     def __repr__(self):
@@ -118,18 +121,6 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
 
     def __hash__(self):
         return hash((self.temporary_id))
-    
-    def click_consent(self):
-        script = """
-        let el = document.querySelector('form:last-child')
-        let button = el && el.querySelector('button')
-        button && button.click()
-        """
-        try:
-            self.driver.execute_script(script)
-        except:
-            return False
-        time.sleep(5)
 
     def sort_comments(self):
         open_menu = """
@@ -174,7 +165,7 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
     def flatten(self):
         """Flatten the saved dataclasses to dictionnaries"""
         return [business.as_json() for business in self.collected_businesses]
-    
+
     def create_comments_dataframe(self, *, save=True, columns=['text', 'rating']):
         """Return the comments using only a specific set
         of columns and eventually save the file"""
@@ -188,13 +179,15 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
         df = df.sort_values('text')
 
         if save:
-            filename = create_filename(suffix='clean_comments')
+            filename = self.filename or create_filename(
+                suffix='clean_comments')
             df.to_csv(
-                MEDIA_PATH / f'{filename}.csv', 
-                index=False, 
+                MEDIA_PATH / f'{filename}.csv',
+                index=False,
                 encoding='utf-8'
             )
         return df
+
     def create_files(self, business, filename):
         """Create the files to store the comments, the business information
         and the clean comments as a csv. This will also trigger the
@@ -222,7 +215,7 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
         pass
 
 
-class GooglePlaces(SpiderMixin):
+class GooglePlaces(GoogleMapsMixin):
     def get_dataframe(self):
         data = defaultdict(list)
         for business in self.flatten():
@@ -261,12 +254,12 @@ class GooglePlaces(SpiderMixin):
         async def sender():
             if self.websocket is not None:
                 await self.websocket.send({b'error': message})
-        asyncio.run(sender)      
+        asyncio.run(sender)
 
     def start_spider(self, url):
         self.is_running = True
 
-        filename = create_filename()
+        self.filename = filename = create_filename()
         urls_seen_file = pathlib.Path(MEDIA_PATH / f'{filename}_urls_seen.csv')
         if not urls_seen_file.exists():
             urls_seen_file.touch()
@@ -458,7 +451,7 @@ class GooglePlaces(SpiderMixin):
                     )
                 except:
                     logger.error('Could not scroll to bottom on comments')
-                
+
                 if current_scroll > 0:
                     # When the current_scroll is in the last
                     # three positions, we can safely break
@@ -573,16 +566,9 @@ class GooglePlaces(SpiderMixin):
                 instance = Review(**clean_comment)
                 business.reviews.append(instance)
                 self.COMMENTS.append(clean_comment)
+
             self.collected_businesses.append(business)
-
-            with open(MEDIA_PATH / f'{filename}.json', mode='w') as f:
-                json.dump(self.flatten(), f)
-
-            with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp:
-                json.dump(self.COMMENTS, fp)
-                
-            self.create_comments_dataframe()
-            self.trigger_webhooks(data=business.as_json())
+            self.create_files(business, filename)
 
             logger.info(
                 f"Completed {iteration_count} of "
@@ -593,8 +579,8 @@ class GooglePlaces(SpiderMixin):
         self.driver.quit()
 
 
-class GooglePlace(SpiderMixin):
-    def start_spider(self, url):
+class GooglePlace(GoogleMapsMixin):
+    def start_spider(self, url, is_loop=False):
         self.is_running = True
 
         self.driver.maximize_window()
@@ -667,7 +653,7 @@ class GooglePlace(SpiderMixin):
             tab_list[1].click()
         except:
             return False
-        
+
         time.sleep(2)
         self.sort_comments()
 
@@ -715,14 +701,14 @@ class GooglePlace(SpiderMixin):
                 logger.critical(e)
                 return False
 
-            if current_scroll > 0:
-                # When the current_scroll is in the last
-                # three positions, we can safely break
-                # the looop otherwise we'll have to
-                # to the max of COMMENTS_SCROLL_ATTEMPTS
-                if current_scroll in last_positions[len(last_positions) - 3:]:
-                    last_positions = []
-                    break
+            self.comments_scroll_counter.update({current_scroll: 1})
+            result = self.test_current_scroll_repetition(current_scroll)
+            if result:
+                # DEBUG: Check the counter
+                logger.debug(f'{dict(self.comments_scroll_counter)}')
+                self.comments_scroll_counter.clear()
+                break
+
             last_positions.append(current_scroll)
 
             # Increase the number of pixels to
@@ -823,7 +809,7 @@ class GooglePlace(SpiderMixin):
             clean_comment = clean_dict(comment)
             instance = Review(**clean_comment)
             business.reviews.append(instance)
-            
+
             text = clean_comment['text']
             if text is not None:
                 text1 = text.replace(';', ' ')
@@ -831,21 +817,15 @@ class GooglePlace(SpiderMixin):
                 clean_comment['text'] = text2
 
             self.COMMENTS.append(clean_comment)
+
         self.collected_businesses.append(business)
+        self.create_files(business, filename)
 
-        with open(MEDIA_PATH / f'{filename}.json', mode='w') as fp1:
-            json.dump(self.flatten(), fp1)
-
-        with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp2:
-            json.dump(self.COMMENTS, fp2)
-        self.create_comments_dataframe()
-        self.trigger_webhooks(data=business.as_json())
-
-        logger.info(f'Created files: {filename} and {filename}_comments')
         logger.info('Completed comments collection')
 
-        self.is_running = False
-        self.driver.quit()
+        if not is_loop:
+            self.is_running = False
+            self.driver.quit()
 
     def iterate_urls(self):
         """From a file containing a set of Google url places,
@@ -861,7 +841,7 @@ class GooglePlace(SpiderMixin):
         
         for item in df.itertuples(name='GooglePlaces'):
             try:
-                self.start_spider(item.url)
+                self.start_spider(item.url, is_loop=True)
             except Exception as e:
                 logger.error(f"Error trying to get url: {item.url}")
                 logger.error(e)
@@ -886,16 +866,16 @@ class SearchLinks(SpiderMixin):
     def __init__(self):
         self.driver = None
         self.data_file = None
+        self.current_iteration = 0
+        self.output_filename = create_filename(prefix='search_urls')
 
     def create_file(self, prefix=None):
-        filename = create_filename(prefix=prefix or 'search_urls')
         df = pandas.DataFrame(data=self.URLS)
         df.to_csv(
-            MEDIA_PATH / f'{filename}.csv',
+            MEDIA_PATH / f'{self.output_filename}.csv',
             index=False, 
             encoding='utf-8'
         )
-        logger.info('Spider completed')
 
     def current_page_actions(self):
         pass
@@ -942,7 +922,7 @@ class SearchLinks(SpiderMixin):
             el && el.click()
             """
             self.driver.execute_script(modal_script)
-
+            
             # Allows the page to load on certain
             # search ites. Lag.
             time.sleep(5)
@@ -953,28 +933,57 @@ class SearchLinks(SpiderMixin):
             if '/maps/place/' in url:
                 self.URLS.append({'search': item.data, 'url': url})
                 self.current_page_actions()
-                logger.info(f"Got url number {item.Index}: {url}")
-                time.sleep(4)
+                logger.info(f"Got url number {item.Index + 1}: \"{url}\"")
             else:
                 self.URLS.append({'search': item.data, 'url': None})
-                logger.warning(f'Incorrect url for search: {item.data}')
+                logger.warning(f'Incorrect url for search: "{item.data}"')
+            
+            self.create_file()
+            time.sleep(random.randrange(4, 8))
+            self.current_iteration = self.current_iteration + 1
+        logger.info('Spider completed')
 
-        self.create_file()
 
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser('Google reviews')
+#     parser.add_argument(
+#         'name',
+#         type=str,
+#         help='The name of the review parser to use',
+#         choices=['place', 'places', 'search']
+#     )
+#     parser.add_argument('url', type=str, help='The url to visit')
+#     parser.add_argument(
+#         '-w',
+#         '--webhook',
+#         type=str,
+#         help='The webhook to use in order to send data'
+#     )
+#     namespace = parser.parse_args()
 
-    if namespace.name == 'place':
-        klass = GooglePlace
-    elif namespace.name == 'places':
-        klass = GooglePlaces
+#     if namespace.name == 'place':
+#         klass = GooglePlace
+#     elif namespace.name == 'places':
+#         klass = GooglePlaces
 
-    result = check_url(namespace.name, namespace.url)
-    if result:
-        
-        try:
-            instance = klass()
-            # instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
-            instance.start_spider(namespace.url)
-        except Exception as e:
-            logger.critical(e)
-        except KeyboardInterrupt:
-            logger.info('Program stopped')
+#     result = check_url(namespace.name, namespace.url)
+#     if result:
+#         try:
+#             instance = klass()
+#             # instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
+#             instance.start_spider(namespace.url)
+#         except Exception as e:
+#             logger.critical(e)
+#         except KeyboardInterrupt:
+#             logger.info('Program stopped')
+
+# instance = SearchLinks()
+# try:
+#     instance.start_spider()
+# except KeyboardInterrupt:
+#     instance.create_file(prefix='dump')
+# except Exception:
+#     instance.create_file(prefix='dump')
+
+instance = GooglePlace()
+instance.iterate_urls()
