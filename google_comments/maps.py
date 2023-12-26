@@ -812,12 +812,91 @@ class GooglePlace(SpiderMixin):
         self.driver.quit()
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Google reviews')
-    parser.add_argument('name', type=str, help='The name of the review parser to use', choices=['place', 'places'])
-    parser.add_argument('url', type=str, help='The url to visit')
-    parser.add_argument('-w', '--webhook', type=str, help='The webhook to use in order to send data')
-    namespace = parser.parse_args()
+class SearchLinks(SpiderMixin):
+    """This automater reads a csv file called `search_data`
+    which contains a column called `data` containing a business
+    name, an address and eventually a zip code. The concatenation
+    of these three elements allows us to perform a search in the input
+    of Google Maps in order to a Google Place url"""
+
+    URLS = []
+    base_url = 'https://www.google.com/maps/@50.6476347,3.1369403,14z?entry=ttu'
+
+    def __init__(self):
+        self.driver = None
+        self.data_file = None
+
+    def create_file(self, prefix=None):
+        filename = create_filename(prefix=prefix or 'search_urls')
+        df = pandas.DataFrame(data=self.URLS)
+        df.to_csv(
+            MEDIA_PATH / f'{filename}.csv',
+            index=False, 
+            encoding='utf-8'
+        )
+        logger.info('Spider completed')
+
+    def current_page_actions(self):
+        pass
+
+    def start_spider(self):
+        logger.info(f'Starting {self.__class__.__name__}...')
+        self.driver = get_selenium_browser_instance()
+        self.driver.get(self.base_url)
+
+        time.sleep(1)
+        self.click_consent()
+        self.driver.maximize_window()
+
+        df = pandas.read_csv(MEDIA_PATH / 'search_data.csv', encoding='utf-8')
+
+        for item in df.itertuples(name='Search'):
+            input_script = """
+            const el = document.querySelector('input[name="q"]')
+            return el
+            """
+            element = self.driver.execute_script(input_script)
+            element.clear()
+
+            time.sleep(3)
+            # After maximizing the Window, a small modal
+            # about ads appears
+            modal_script = """
+            const el = document.querySelector('button[aria-label="Ignorer"]')
+            el && el.click()
+            """
+            self.driver.execute_script(modal_script)
+
+            actions = ActionChains(self.driver)
+            actions.move_to_element(element)
+            actions.click()
+            actions.send_keys(item.data, Keys.ENTER)
+            actions.perform()
+
+            time.sleep(1)
+            # When doing a click, a side modal opens
+            # on the left of the screen
+            modal_script = """
+            const el = document.querySelector('button[jsaction="settings.close"]')
+            el && el.click()
+            """
+            self.driver.execute_script(modal_script)
+
+            current_page_url_script = """
+            return window.location.href
+            """
+            url = self.driver.execute_script(current_page_url_script)
+            if '/maps/place/' in url:
+                self.URLS.append({'search': item.data, 'url': url})
+                self.current_page_actions()
+                logger.info(f"Got url number {item.Index}: {url}")
+                time.sleep(4)
+            else:
+                self.URLS.append({'search': item.data, 'url': None})
+                logger.warning(f'Incorrect url for search: {item.data}')
+
+        self.create_file()
+
 
     if namespace.name == 'place':
         klass = GooglePlace
