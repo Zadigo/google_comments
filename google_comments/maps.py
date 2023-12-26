@@ -195,7 +195,19 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
                 encoding='utf-8'
             )
         return df
-    
+    def create_files(self, business, filename):
+        """Create the files to store the comments, the business information
+        and the clean comments as a csv. This will also trigger the
+        registered webhooks"""
+        with open(MEDIA_PATH / f'{filename}.json', mode='w') as fp1:
+            json.dump(self.flatten(), fp1)
+
+        with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp2:
+            json.dump(self.COMMENTS, fp2)
+        self.create_comments_dataframe()
+        self.trigger_webhooks(data=business.as_json())
+        logger.info(f'Created files: {filename} and {filename}_comments')
+
     def start_spider(self, url):
         pass
 
