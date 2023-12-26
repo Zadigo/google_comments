@@ -811,6 +811,25 @@ class GooglePlace(SpiderMixin):
         self.is_running = False
         self.driver.quit()
 
+    def iterate_urls(self):
+        """From a file containing a set of Google url places,
+        iterate and extract the comments for each Google Place"""
+        df = pandas.read_csv(
+            MEDIA_PATH / 'google_place_urls.csv',
+            encoding='utf-8'
+        )
+        for item in df.itertuples(name='GooglePlaces'):
+            try:
+                self.start_spider(item.url)
+            except Exception as e:
+                logger.error(f"Error trying to get url: {item.url}")
+                logger.error(e)
+                continue
+            else:
+                with open(MEDIA_PATH / 'completed_urls.csv', mode='w', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([item.url])
+
 
 class SearchLinks(SpiderMixin):
     """This automater reads a csv file called `search_data`
@@ -882,6 +901,9 @@ class SearchLinks(SpiderMixin):
             """
             self.driver.execute_script(modal_script)
 
+            # Allows the page to load on certain
+            # search ites. Lag.
+            time.sleep(5)
             current_page_url_script = """
             return window.location.href
             """
