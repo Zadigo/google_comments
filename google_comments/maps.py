@@ -80,6 +80,20 @@ class WebhookMixin:
 
 
 class SpiderMixin(WebhookMixin):
+    def click_consent(self):
+        script = """
+        let el = document.querySelector('form:last-child')
+        let button = el && el.querySelector('button')
+        button && button.click()
+        """
+        try:
+            self.driver.execute_script(script)
+        except:
+            return False
+        time.sleep(5)
+
+
+class GoogleMapsMixin(SpiderMixin, WebhookMixin):
     COMMENTS = []
     collected_businesses = []
 
