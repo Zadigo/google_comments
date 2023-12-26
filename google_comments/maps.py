@@ -826,6 +826,10 @@ class GooglePlace(GoogleMapsMixin):
         if not is_loop:
             self.is_running = False
             self.driver.quit()
+        else:
+            self.COMMENTS = []
+            self.collected_businesses = []
+            return True
 
     def iterate_urls(self):
         """From a file containing a set of Google url places,
