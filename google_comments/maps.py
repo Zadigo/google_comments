@@ -208,6 +208,16 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
         self.trigger_webhooks(data=business.as_json())
         logger.info(f'Created files: {filename} and {filename}_comments')
 
+    def test_current_scroll_repetition(self, current_scroll, limit=3):
+        # When the current_scroll is in the last
+        # three positions, we can safely break
+        # the looop otherwise we'll have to
+        # to the max of COMMENTS_SCROLL_ATTEMPTS
+        result = self.comments_scroll_counter[current_scroll]
+        if result > limit:
+            return True
+        return False
+
     def start_spider(self, url):
         pass
 
