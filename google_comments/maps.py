@@ -33,6 +33,8 @@ from google_comments.models import GoogleBusiness, Review
 
 COMMENTS_SCROLL_ATTEMPTS = 50
 
+COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
+
 FEED_SCROLL_ATTEMPTS = 30
 
 
@@ -580,7 +582,7 @@ class GooglePlaces(GoogleMapsMixin):
 
 
 class GooglePlace(GoogleMapsMixin):
-    def start_spider(self, url, is_loop=False):
+    def start_spider(self, url, refresh=False, is_loop=False):
         self.is_running = True
 
         self.driver.maximize_window()
@@ -851,7 +853,7 @@ class GooglePlace(GoogleMapsMixin):
                 logger.error(e)
                 continue
             else:
-                with open(MEDIA_PATH / 'completed_urls.csv', mode='a', encoding='utf-8') as f:
+                with open(MEDIA_PATH / 'completed_urls.csv', mode='a', newline='\n', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow([item.url])
                 time.sleep(random.randrange(4, 8))
