@@ -1,7 +1,7 @@
 import argparse
 
 from google_comments import check_url, logger
-from google_comments.maps import GooglePlaces
+from google_comments.maps import GooglePlaces, GooglePlace
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Google reviews')
