@@ -851,7 +851,7 @@ class GooglePlace(GoogleMapsMixin):
                 logger.error(e)
                 continue
             else:
-                with open(MEDIA_PATH / 'completed_urls.csv', mode='w', encoding='utf-8') as f:
+                with open(MEDIA_PATH / 'completed_urls.csv', mode='a', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow([item.url])
                 time.sleep(random.randrange(4, 8))
