@@ -864,7 +864,7 @@ class SearchLinks(SpiderMixin):
     which contains a column called `data` containing a business
     name, an address and eventually a zip code. The concatenation
     of these three elements allows us to perform a search in the input
-    of Google Maps in order to a Google Place url"""
+    of Google Maps in order to get the corresponding Google Place url"""
 
     URLS = []
     base_url = 'https://www.google.com/maps/@50.6476347,3.1369403,14z?entry=ttu'
