@@ -921,6 +921,16 @@ class SearchLinks(SpiderMixin):
             actions.perform()
 
             time.sleep(1)
+            if self.is_feed_page:
+                logger.warning(f'Is a feed page: "{item.data}"')
+                filename = create_filename(prefix=slugify(item.data))
+
+                filepath = f'screenshots/{filename}.png'
+                
+                self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
+                logger.info(f'Created screenshot @ "{filepath}"')
+                continue
+
             # When doing a click, a side modal opens
             # on the left of the screen
             modal_script = """
