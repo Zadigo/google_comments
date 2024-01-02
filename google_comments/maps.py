@@ -717,68 +717,7 @@ class GooglePlace(GoogleMapsMixin):
                 )
                 time.sleep(5)
 
-        comments_script = """
-        function getText (el) {
-            return el && el.textContent.trim()
-        }
-
-        function resolveXpath (xpath) {
-            return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
-        }
-
-        function evaluateXpath (xpath) {
-            var result = resolveXpath(xpath)
-            return getText(result)
-        }
-
-        function gatherComments() {
-            const commentsWrapper = document.querySelectorAll("div[data-review-id^='Ch'][class*='fontBodyMedium ']")
-
-            Array.from(commentsWrapper).forEach((item) => {
-                let dataReviewId = item.dataset['reviewId']
-                try {
-                    // Sometimes there is a read more button
-                    // that we have to click
-
-                    moreButton = (
-                        // Try the "Voir plus" button"
-                        item.querySelector('button[aria-label="Voir plus"]') ||
-                        // Try the "See more" button"
-                        item.querySelector('button[aria-label="See more"]') ||
-                        // On last resort try "aria-expanded"
-                        item.querySelector('button[aria-expanded="false"]')
-                    )
-                    moreButton.click()
-                } catch (e) {
-                    console.log('No "see more" button for review', dataReviewId)
-                }
-            })
-
-            return Array.from(commentsWrapper).map((item) => {
-                let dataReviewId = item.dataset['reviewId']
-
-                // Or, .rsqaWe
-                let period = getText(item.querySelector('.DU9Pgb'))
-                let rating = item.querySelector('span[role="img"]') && item.querySelector('span[role="img"]').ariaLabel
-                let text = getText(item.querySelector("*[class='MyEned']"))
-                let reviewerName = getText(item.querySelector('[class*="d4r55"]'))
-                let reviewerNumberOfReviews = getText(item.querySelector('*[class*="RfnDt"]'))
-
-                return {
-                    google_review_id: dataReviewId,
-                    text,
-                    rating,
-                    period,
-                    reviewer_name: reviewerName,
-                    reviewer_number_of_reviews: reviewerNumberOfReviews
-                }
-            })
-        }
-
-        return gatherComments()
-        """
-        comments = self.driver.execute_script(comments_script)
-        logger.info(f'Collected {len(comments)} comments')
+            comments = self.driver.execute_script(constants.COMMENTS_SCRIPT)
 
         for comment in comments:
             clean_comment = clean_dict(comment)
