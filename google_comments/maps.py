@@ -684,38 +684,38 @@ class GooglePlace(GoogleMapsMixin):
                     self.comments_scroll_counter.clear()
                     break
 
-            last_positions.append(current_scroll)
+                last_positions.append(current_scroll)
 
-            # Increase the number of pixels to
-            # get when we reach a certain level
-            # of scrolling on the page
-            if current_scroll > 10000:
-                return_position = random.choice(last_positions[5:])
+                # Increase the number of pixels to
+                # get when we reach a certain level
+                # of scrolling on the page
+                if current_scroll > 10000:
+                    return_position = random.choice(last_positions[5:])
 
-            if current_scroll > 10000:
-                pixels = pixels + 8000
-            elif current_scroll > 20000:
-                pixels = pixels + 15000
-            else:
-                pixels = pixels + 2000
+                if current_scroll > 10000:
+                    pixels = pixels + 8000
+                elif current_scroll > 20000:
+                    pixels = pixels + 15000
+                else:
+                    pixels = pixels + 2000
 
-            scroll_top_script = """
-            const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
-            const el = mainWrapper.querySelector('div[tabindex="-1"]')
-            el.scroll({ top: $return_position, left: 0, behavior: "smooth" })
-            """
-            scroll_top_script = string.Template(scroll_top_script).substitute(
-                business_name=business_name,
-                return_position=return_position
-            )
-            self.driver.execute_script(scroll_top_script)
+                scroll_top_script = """
+                const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
+                const el = mainWrapper.querySelector('div[tabindex="-1"]')
+                el.scroll({ top: $return_position, left: 0, behavior: "smooth" })
+                """
+                scroll_top_script = string.Template(scroll_top_script).substitute(
+                    business_name=business_name,
+                    return_position=return_position
+                )
+                self.driver.execute_script(scroll_top_script)
 
-            count = count + 1
-            logger.debug(
-                f"Completed {count} of "
-                f"{COMMENTS_SCROLL_ATTEMPTS} scrolls"
-            )
-            time.sleep(5)
+                count = count + 1
+                logger.debug(
+                    f"Completed {count} of "
+                    f"{COMMENTS_SCROLL_ATTEMPTS} scrolls"
+                )
+                time.sleep(5)
 
         comments_script = """
         function getText (el) {
