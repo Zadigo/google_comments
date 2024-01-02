@@ -586,62 +586,25 @@ class GooglePlaces(GoogleMapsMixin):
 
 
 class GooglePlace(GoogleMapsMixin):
+    """Gets information about a Google Place business and
+    eventually the reviews that were left by the users"""
+
     def start_spider(self, url, refresh=False, is_loop=False):
         self.is_running = True
 
         self.driver.maximize_window()
 
+        # if not self.keep_unique_file and self.filename is not None:
         self.filename = filename = create_filename()
         self.driver.get(url)
 
-        # 1. Click on the consent form
+        # 1. Click on the consent form - This appears
+        # when we first try to use the Google Maps
+        # website in anonymous state
         self.click_consent()
 
-        business_information_script = """
-        function getText (el) {
-            return el && el.textContent.trim()
-        }
-
-        function resolveXpath (xpath) {
-            return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
-        }
-
-        function evaluateXpath (xpath) {
-            var result = resolveXpath(xpath)
-            return getText(result)
-        }
-
-        function getBusiness () {
-            let name = (
-                document.querySelector('div[role="main"]').ariaLabel ||
-                // As fallback, get all [role="main"] and only select the one with an
-                // AriaLabel to get business name
-                Array.from(document.querySelectorAll('div[role="main"][aria-label]'))[0].ariaLabel
-            )
-            let address = evaluateXpath('//button[contains(@aria-label, "Adresse:")]')
-            let rating = document.querySelector('span[role="img"]').ariaLabel
-            let numberOfReviews = evaluateXpath('//div[contains(@class, "F7nice")]/span[2]')
-            let telephone = evaluateXpath('//button[contains(@data-tooltip, "Copier le numéro de téléphone")][contains(@aria-label, "téléphone:")]')
-            let category = evaluateXpath('//button[contains(@jsaction, "pane.rating.category")]')
-
-            let websiteElement = resolveXpath('//a[contains(@aria-label, "Site Web:")]')
-            let website = websiteElement && websiteElement.href
-
-            return {
-                name,
-                url: window.location.href,
-                address,
-                rating,
-                number_of_reviews: numberOfReviews,
-                telephone,
-                website,
-                additional_information: evaluateXpath('//div[contains(@aria-label, "Informations")][@role="region"][contains(@class, "m6QErb")]')
-            }
-        }
-
-        return getBusiness()
-        """
-        details = self.driver.execute_script(business_information_script)
+        # 2. Get the business information: name, website, address etc.
+        details = self.driver.execute_script(constants.BUSINESS_INFORMATION_SCRIPT)
         result = re.search(r'(\d+)', details['number_of_reviews'])
         if result:
             details['number_of_reviews'] = result.group(1)
