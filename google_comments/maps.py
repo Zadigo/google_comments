@@ -613,70 +613,76 @@ class GooglePlace(GoogleMapsMixin):
         business = GoogleBusiness(**details)
         business.get_gps_coordinates_from_url()
 
-        # Click on the comments tab
-        tab_list = self.driver.find_elements(
-            By.CSS_SELECTOR,
-            '*[role="tablist"] button'
-        )
-        try:
-            tab_list[1].click()
-        except:
-            return False
-
-        time.sleep(2)
-        self.sort_comments()
-
-        business_name = details['name']
-        try:
-            # When we could not get a business
-            # name, just safely return otherwsise
-            # we get a TypeError when trying to
-            # to check quotes in the value with
-            # the conditional IF
-            if "'" in business_name:
-                business_name = business_name.replace("'", "\\'")
-
-            if '"' in business_name:
-                business_name = business_name.replace('"', '\\"')
-        except TypeError as e:
-            logger.error(f"Value for business name is None: {e}")
-            return False
-
-        count = 0
-        pixels = 2000
-        last_positions = []
-        return_position = 0
-        while count < COMMENTS_SCROLL_ATTEMPTS:
-            scroll_bottom_script = """
-            const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
-            const el = mainWrapper.querySelector('div[tabindex="-1"]')
-            el.scroll({ top: $pixels, left: 0, behavior: "instant" })
-            return [ el.scrollTop, el.scrollHeight ]
-            """
-            scroll_bottom_script = string.Template(scroll_bottom_script).substitute(
-                business_name=business_name,
-                pixels=pixels
+        # 3. Get all/if not most of the reviews left
+        # for the current business. NOTE: When trying
+        # to click on the "See more" button of a review,
+        # we don't necessarily get all reviewer's text. We
+        # could find a technique to correct that
+        if self.collect_reviews:
+            tab_list = self.driver.find_elements(
+                By.CSS_SELECTOR,
+                '*[role="tablist"] button'
             )
-
             try:
-                current_scroll, scroll_height = self.driver.execute_script(
-                    scroll_bottom_script
-                )
-            except Exception as e:
-                logger.error(
-                    "Could not scroll the comments container "
-                    "because the related section could not be found"
-                )
-                logger.critical(e)
+                tab_list[1].click()
+            except:
                 return False
 
-            self.comments_scroll_counter.update({current_scroll: 1})
-            result = self.test_current_scroll_repetition(current_scroll)
-            if result:
-                # DEBUG: Check the counter
-                logger.debug(f'{dict(self.comments_scroll_counter)}')
-                self.comments_scroll_counter.clear()
-                break
+            time.sleep(2)
+
+            self.sort_comments()
+
+            business_name = details['name']
+            try:
+                # When we could not get a business
+                # name, just safely return otherwsise
+                # we get a TypeError when trying to
+                # to check quotes in the value with
+                # the conditional IF
+                if "'" in business_name:
+                    business_name = business_name.replace("'", "\\'")
+
+                if '"' in business_name:
+                    business_name = business_name.replace('"', '\\"')
+            except TypeError as e:
+                logger.error(f"Value for business name is None: {e}")
+                return False
+
+            count = 0
+            pixels = 2000
+            last_positions = []
+            return_position = 0
+            while count < COMMENTS_SCROLL_ATTEMPTS:
+                scroll_bottom_script = """
+                const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
+                const el = mainWrapper.querySelector('div[tabindex="-1"]')
+                el.scroll({ top: $pixels, left: 0, behavior: "instant" })
+                return [ el.scrollTop, el.scrollHeight ]
+                """
+                scroll_bottom_script = string.Template(scroll_bottom_script).substitute(
+                    business_name=business_name,
+                    pixels=pixels
+                )
+
+                try:
+                    current_scroll, scroll_height = self.driver.execute_script(
+                        scroll_bottom_script
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Could not scroll the comments container "
+                        "because the related section could not be found"
+                    )
+                    logger.critical(e)
+                    return False
+
+                self.comments_scroll_counter.update({current_scroll: 1})
+                result = self.test_current_scroll_repetition(current_scroll)
+                if result:
+                    # DEBUG: Check the counter
+                    logger.debug(f'{dict(self.comments_scroll_counter)}')
+                    self.comments_scroll_counter.clear()
+                    break
 
             last_positions.append(current_scroll)
 
