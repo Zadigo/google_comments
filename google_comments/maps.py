@@ -83,6 +83,10 @@ class WebhookMixin:
 
 
 class SpiderMixin(WebhookMixin):
+    @property
+    def is_feed_page(self):
+        return self.driver.execute_script(constants.IS_FEED_PAGE_SCRIPT)
+
     def click_consent(self):
         script = """
         let el = document.querySelector('form:last-child')
