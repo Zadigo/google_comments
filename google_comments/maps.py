@@ -113,7 +113,14 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
         self.seen_urls_outputted = False
         self.filename = None
         self.comments_scroll_counter = Counter()
+        self.output_folder = output_folder
+        self.output_folder_path = MEDIA_PATH
         logger.info('Starting spider')
+
+        if output_folder is not None:
+            self.output_folder_path = self.output_folder_path.joinpath(output_folder)
+            if not self.output_folder_path.exists():
+                self.output_folder_path.mkdir()
 
     def __repr__(self):
         return f'<{self.__class__.__name__} [{self.temporary_id}]>'
@@ -198,11 +205,12 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
         """Create the files to store the comments, the business information
         and the clean comments as a csv. This will also trigger the
         registered webhooks"""
-        with open(MEDIA_PATH / f'{filename}.json', mode='w') as fp1:
+        with open(self.output_folder_path.joinpath(f'business_{filename}.json'), mode='w') as fp1:
             json.dump(self.flatten(), fp1)
 
-        with open(MEDIA_PATH / f'{filename}_comments.json', mode='w') as fp2:
+        with open(self.output_folder_path.joinpath(f'{filename}_comments.json'), mode='w') as fp2:
             json.dump(self.COMMENTS, fp2)
+
         self.create_comments_dataframe()
         self.trigger_webhooks(data=business.as_json())
         logger.info(f'Created files: {filename} and {filename}_comments')
