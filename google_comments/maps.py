@@ -718,19 +718,20 @@ class GooglePlace(GoogleMapsMixin):
                 time.sleep(5)
 
             comments = self.driver.execute_script(constants.COMMENTS_SCRIPT)
+            logger.info(f'Collected {len(comments)} comments')
 
-        for comment in comments:
-            clean_comment = clean_dict(comment)
-            instance = Review(**clean_comment)
-            business.reviews.append(instance)
+            for comment in comments:
+                clean_comment = clean_dict(comment)
+                instance = Review(**clean_comment)
+                business.reviews.append(instance)
 
-            text = clean_comment['text']
-            if text is not None:
-                text1 = text.replace(';', ' ')
-                text2 = text1.replace(',', ' ')
-                clean_comment['text'] = text2
+                text = clean_comment['text']
+                if text is not None:
+                    text1 = text.replace(';', ' ')
+                    text2 = text1.replace(',', ' ')
+                    clean_comment['text'] = text2
 
-            self.COMMENTS.append(clean_comment)
+                self.COMMENTS.append(clean_comment)
 
         self.collected_businesses.append(business)
         self.create_files(business, filename)
