@@ -90,6 +90,9 @@ class SpiderMixin(WebhookMixin):
     @property
     def is_feed_page(self):
         return self.driver.execute_script(constants.IS_FEED_PAGE_SCRIPT)
+    
+    def check_address(self, model, address):
+        pass
 
     def click_consent(self):
         script = """
@@ -107,8 +110,10 @@ class SpiderMixin(WebhookMixin):
 class GoogleMapsMixin(SpiderMixin, WebhookMixin):
     COMMENTS = []
     collected_businesses = []
+    collect_reviews = True
+    keep_unique_file = False
 
-    def __init__(self):
+    def __init__(self, output_folder=None):
         self.temporary_id = secrets.token_hex(5)
         self.is_running = False
         self.start_time = datetime.datetime.now(tz=pytz.UTC)
@@ -197,9 +202,10 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
 
         if save:
             filename = self.filename or create_filename(
-                suffix='clean_comments')
+                suffix='clean_comments'
+            )
             df.to_csv(
-                MEDIA_PATH / f'{filename}.csv',
+                self.output_folder_path.joinpath(f'{filename}.csv'),
                 index=False,
                 encoding='utf-8'
             )
@@ -212,12 +218,14 @@ class GoogleMapsMixin(SpiderMixin, WebhookMixin):
         with open(self.output_folder_path.joinpath(f'business_{filename}.json'), mode='w') as fp1:
             json.dump(self.flatten(), fp1)
 
-        with open(self.output_folder_path.joinpath(f'{filename}_comments.json'), mode='w') as fp2:
-            json.dump(self.COMMENTS, fp2)
+        if self.collect_reviews:
+            with open(self.output_folder_path.joinpath(f'{filename}_comments.json'), mode='w') as fp2:
+                json.dump(self.COMMENTS, fp2)
+            self.create_comments_dataframe()
+            logger.info(f'Created files: {filename} and {filename}_comments')
 
-        self.create_comments_dataframe()
         self.trigger_webhooks(data=business.as_json())
-        logger.info(f'Created files: {filename} and {filename}_comments')
+        logger.info(f'Created files: business_{filename}')
 
     def test_current_scroll_repetition(self, current_scroll, limit=3):
         # When the current_scroll is in the last
@@ -413,7 +421,8 @@ class GooglePlaces(GoogleMapsMixin):
             business.website = more_information['website']
             business.get_gps_coordinates_from_url(substitute_url=url)
 
-            with open(MEDIA_PATH / f'{filename}_urls_seen.csv', newline='\n', mode='a') as f:
+            seen_urls_path = self.output_folder_path.joinpath(f'{filename}_urls_seen.csv')
+            with open(seen_urls_path, newline='\n', mode='a') as f:
                 writer = csv.writer(f)
                 writer.writerow([business.name, business.feed_url])
 
@@ -594,16 +603,18 @@ class GooglePlaces(GoogleMapsMixin):
                 f"{number_of_business_cards} business cards"
             )
 
-        self.is_running = False
-        self.driver.quit()
+        if not is_loop:
+            self.is_running = False
+            self.driver.quit()
 
 
 class GooglePlace(GoogleMapsMixin):
     """Gets information about a Google Place business and
     eventually the reviews that were left by the users"""
 
-    def start_spider(self, url, refresh=False, is_loop=False):
+    def start_spider(self, url, refresh=False, is_loop=False, maximize_window=True):
         self.is_running = True
+        
         if maximize_window:
             self.driver.maximize_window()
 
@@ -745,11 +756,10 @@ class GooglePlace(GoogleMapsMixin):
                     clean_comment['text'] = text2
 
                 self.COMMENTS.append(clean_comment)
+            logger.info('Completed comments collection')
 
         self.collected_businesses.append(business)
         self.create_files(business, filename)
-
-        logger.info('Completed comments collection')
 
         if not is_loop:
             self.is_running = False
@@ -760,8 +770,10 @@ class GooglePlace(GoogleMapsMixin):
             return True
 
     def iterate_urls(self):
-        """From a file containing a set of Google url places,
-        iterate and extract the comments for each Google Place"""
+        """From a file called `media/google_place_urls.csv` containing a set of 
+        Google url places, iterate and extract the comments for each 
+        Google Place. This calls `start_spider` in a loop passing 
+        the current url."""
         try:
             df = pandas.read_csv(
                 MEDIA_PATH / 'google_place_urls.csv',
@@ -771,35 +783,54 @@ class GooglePlace(GoogleMapsMixin):
             logger.error(f"{self.__class__.__name__} expects a google_place_urls csv file")
             return False
         
-        for item in df.itertuples(name='GooglePlaces'):
+        if 'url' not in list(df.columns):
+            raise ValueError("Your file should contain an 'url' column")
+        
+        df['is_duplicate'] = df.duplicated(subset=['url'])
+        duplicate_rows = df[df['is_duplicate'] == True]
+        if duplicate_rows['url'].count() > 0:
+            logger.warning(f"{duplicate_rows.count()} duplicate urls in your file")
+
+        # completed_urls_csv = self.output_folder_path.joinpath('completed_urls.csv')
+        # completed_urls = pandas.read_csv(self.output_folder_path.joinpath('completed_urls.csv'))
+        # none_visited = duplicated_rows['url'].isin(completed_urls['0'])
+        
+        for item in df.itertuples(name='GooglePlace'):
             try:
-                self.start_spider(item.url, is_loop=True)
+                self.driver.maximize_window()
+                self.start_spider(item.url, is_loop=True, maximize_window=False)
             except Exception as e:
                 logger.error(f"Error trying to get url: {item.url}")
                 logger.error(e)
                 continue
             else:
-                with open(MEDIA_PATH / 'completed_urls.csv', mode='a', newline='\n', encoding='utf-8') as f:
+                path = self.output_folder_path.joinpath('completed_urls.csv')
+                with open(path, mode='a', newline='\n', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow([item.url])
                 time.sleep(random.randrange(4, 8))
 
 
 class SearchLinks(SpiderMixin):
-    """This automater reads a csv file called `search_data`
+    """This automater reads a csv file called `search_data.csv`
     which contains a column called `data` containing a business
     name, an address and eventually a zip code. The concatenation
     of these three elements allows us to perform a search in the input
     of Google Maps in order to get the corresponding Google Place url"""
 
     URLS = []
+    confusion_pages = []
     base_url = 'https://www.google.com/maps/@50.6476347,3.1369403,14z?entry=ttu'
 
-    def __init__(self):
+    def __init__(self, output_folder=None):
         self.driver = None
         self.data_file = None
         self.current_iteration = 0
         self.output_filename = create_filename(prefix='search_urls')
+
+        screenshots_folder = MEDIA_PATH / 'screenshots'
+        if not screenshots_folder.exists():
+            screenshots_folder.mkdir()
 
     def create_file(self, prefix=None):
         df = pandas.DataFrame(data=self.URLS)
@@ -821,19 +852,23 @@ class SearchLinks(SpiderMixin):
         self.click_consent()
         self.driver.maximize_window()
 
-        df = pandas.read_csv(MEDIA_PATH / 'search_data.csv', encoding='utf-8')
+        search_data_path = MEDIA_PATH.joinpath('search_data.csv')
+        df = pandas.read_csv(search_data_path, encoding='utf-8')
+        if 'data' not in df.columns:
+            raise ValueError("Your file should have a column 'data'")
 
         for item in df.itertuples(name='Search'):
             input_script = """
-            const el = document.querySelector('input[name="q"]')
-            return el
+            return document.querySelector('input[name="q"]')
             """
             element = self.driver.execute_script(input_script)
             element.clear()
 
             time.sleep(3)
             # After maximizing the Window, a small modal
-            # about ads appears
+            # about ads appears on the map. Run this
+            # script to close it since it blocks our
+            # actions on the page
             modal_script = """
             const el = document.querySelector('button[aria-label="Ignorer"]')
             el && el.click()
@@ -848,13 +883,18 @@ class SearchLinks(SpiderMixin):
 
             time.sleep(1)
             if self.is_feed_page:
-                logger.warning(f'Is a feed page: "{item.data}"')
-                filename = create_filename(prefix=slugify(item.data))
+                self.confusion_pages.append(self.driver.current_url)
+                filename = f'failed_{self.output_filename}.csv'
+                write_csv_file(filename, self.confusion_pages)
 
+                filename = create_filename(prefix=slugify(item.data))
                 filepath = f'screenshots/{filename}.png'
                 
+                logger.warning(f'Is a feed page: "{item.data}"')
                 self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
                 logger.info(f'Created screenshot @ "{filepath}"')
+                self.current_iteration = self.current_iteration + 1
+                time.sleep(random.randrange(4, 9))
                 continue
 
             # When doing a click, a side modal opens
@@ -883,6 +923,10 @@ class SearchLinks(SpiderMixin):
             self.create_file()
             time.sleep(random.randrange(4, 8))
             self.current_iteration = self.current_iteration + 1
+            logger.info(
+                f"Completed {self.current_iteration} "
+                f"of {df['data'].count()}"
+            )
         logger.info('Spider completed')
 
 
@@ -924,8 +968,87 @@ class SearchLinks(SpiderMixin):
 #     instance.start_spider()
 # except KeyboardInterrupt:
 #     instance.create_file(prefix='dump')
-# except Exception:
+# except Exception as e:
 #     instance.create_file(prefix='dump')
+#     logger.error(e)
 
-instance = GooglePlace()
+instance = GooglePlace(output_folder='concurrents_aprium')
+instance.collect_reviews = False
 instance.iterate_urls()
+
+
+# if __name__ == '__main__':
+#     parser = create_argument_parser()
+#     try:
+#         namespace = parser.parse_args()
+#     except Exception:
+#         raise
+
+#     if namespace.name == 'place':
+#         klass = GooglePlace
+#     elif namespace.name == 'places':
+#         klass = GooglePlaces
+
+#     result = check_url(namespace.name, namespace.url)
+#     if result:
+#         try:
+#             instance = klass()
+
+#             if namespace.collect_reviews:
+#                 instance.collect_reviews = namespace.collect_reviews
+
+#             instance.start_spider(namespace.url)
+#         except Exception as e:
+#             logger.critical(e)
+#         except KeyboardInterrupt:
+#             logger.info('Program stopped')
+
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser('Google reviews')
+#     parser.add_argument(
+#         'name',
+#         type=str,
+#         help='The name of the review parser to user',
+#         choices=['place', 'places']
+#     )
+#     parser.add_argument(
+#         'url',
+#         type=str,
+#         help='The url to visit'
+#     )
+#     parser.add_argument(
+#         '-w',
+#         '--webhook',
+#         type=str,
+#         help='Webhook to send data'
+#     )
+#     parser.add_argument(
+#         '-s',
+#         '--skip-reviews',
+#         type=str,
+#         default=True,
+#         help='Determines if the crawler should not collect the reviews for the given business'
+#     )
+#     namespace = parser.parse_args()
+
+#     # parser = create_argument_parser()
+#     # namespace = parser.parse_args()
+
+#     if namespace.name == 'place':
+#         klass = GooglePlace
+#     elif namespace.name == 'places':
+#         klass = GooglePlaces
+
+#     result = check_url(namespace.name, namespace.url)
+#     if result:
+#         try:
+#             instance = klass()
+
+#             if namespace.skip_reviews:
+#                 instance.collect_reviews = False
+
+#             instance.start_spider(namespace.url)
+#         except Exception as e:
+#             logger.critical(e)
+#         except KeyboardInterrupt:
+#             logger.info('Program stopped')
