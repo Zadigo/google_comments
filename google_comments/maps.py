@@ -11,20 +11,24 @@ import secrets
 import string
 import sys
 import time
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
 
 import pandas
 import pytz
 from requests.auth import HTTPBasicAuth
 from requests.models import Request
 from requests.sessions import Session
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
-from google_comments import (MEDIA_PATH, check_url, clean_dict,
-                             create_filename, get_selenium_browser_instance,
-                             get_soup, logger, simple_clean_text, text_parser)
+
+from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
+                             create_argument_parser, create_filename,
+                             get_selenium_browser_instance, get_soup, logger,
+                             simple_clean_text, text_parser)
 from google_comments.models import GoogleBusiness, Review
+from google_comments.utilities.file_helpers import write_csv_file
+from google_comments.utilities.text import slugify
 
 # COMMENTS_SCROLL_ATTEMPTS = int(os.getenv('COMMENTS_SCROLL_ATTEMPTS', 30))
 
