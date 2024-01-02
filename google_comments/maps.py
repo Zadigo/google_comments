@@ -421,169 +421,170 @@ class GooglePlaces(GoogleMapsMixin):
                 f"Created business: '{business.name} @ {business.address}'"
             )
 
-            # Click on the comments tab
-            tab_list = self.driver.find_elements(
-                By.CSS_SELECTOR,
-                '*[role="tablist"] button'
-            )
-            try:
-                tab_list[1].click()
-            except:
-                continue
-            time.sleep(2)
-
-            # TODO: Check if this potentially
-            # breaks the code when business_name
-            # is None
-            # if business_name is None:
-            #     logger.info(f"Business name not found for url: {url}")
-            #     continue
-
-            if "'" in business_name:
-                business_name = business_name.replace("'", "\\'")
-
-            if '"' in business_name:
-                business_name = business_name.replace('"', '\\"')
-
-            # Iteration for each review
-
-            count = 0
-            pixels = 2000
-            last_positions = []
-            return_position = 0
-            while count < COMMENTS_SCROLL_ATTEMPTS:
-                scroll_bottom_script = """
-                const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
-                const el = mainWrapper.querySelector('div[tabindex="-1"]')
-                el.scroll({ top: $pixels, left: 0, behavior: "instant" })
-                return [ el.scrollTop, el.scrollHeight ]
-                """
-                scroll_bottom_script = string.Template(scroll_bottom_script).substitute(
-                    business_name=business_name,
-                    pixels=pixels
+            if self.collect_reviews:
+                # Click on the comments tab
+                tab_list = self.driver.find_elements(
+                    By.CSS_SELECTOR,
+                    '*[role="tablist"] button'
                 )
-
                 try:
-                    current_scroll, scroll_height = self.driver.execute_script(
-                        scroll_bottom_script
-                    )
+                    tab_list[1].click()
                 except:
-                    logger.error('Could not scroll to bottom on comments')
+                    continue
+                time.sleep(2)
 
-                if current_scroll > 0:
-                    # When the current_scroll is in the last
-                    # three positions, we can safely break
-                    # the looop otherwise we'll have to
-                    # to the max of COMMENTS_SCROLL_ATTEMPTS
-                    if current_scroll in last_positions[:3]:
-                        last_positions = []
-                        break
-                last_positions.append(current_scroll)
+                # TODO: Check if this potentially
+                # breaks the code when business_name
+                # is None
+                # if business_name is None:
+                #     logger.info(f"Business name not found for url: {url}")
+                #     continue
 
-                # Increase the number of pixels to
-                # get when we reach a certain level
-                # of scrolling on the page
-                if current_scroll > 10000:
-                    return_position = random.choice(last_positions[5:])
+                if "'" in business_name:
+                    business_name = business_name.replace("'", "\\'")
 
-                if current_scroll > 10000:
-                    pixels = pixels + 8000
-                elif current_scroll > 20000:
-                    pixels = pixels + 15000
-                else:
-                    pixels = pixels + 2000
+                if '"' in business_name:
+                    business_name = business_name.replace('"', '\\"')
 
-                scroll_top_script = """
-                const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
-                const el = mainWrapper.querySelector('div[tabindex="-1"]')
-                el.scroll({ top: $return_position, left: 0, behavior: "smooth" })
-                """
-                scroll_top_script = string.Template(scroll_top_script).substitute(
-                    business_name=business_name,
-                    return_position=return_position
-                )
-                self.driver.execute_script(scroll_top_script)
+                # Iteration for each review
 
-                count = count + 1
-                logger.debug(
-                    f'Completed {count} of {COMMENTS_SCROLL_ATTEMPTS} scrolls')
-                time.sleep(5)
+                count = 0
+                pixels = 2000
+                last_positions = []
+                return_position = 0
+                while count < COMMENTS_SCROLL_ATTEMPTS:
+                    scroll_bottom_script = """
+                    const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
+                    const el = mainWrapper.querySelector('div[tabindex="-1"]')
+                    el.scroll({ top: $pixels, left: 0, behavior: "instant" })
+                    return [ el.scrollTop, el.scrollHeight ]
+                    """
+                    scroll_bottom_script = string.Template(scroll_bottom_script).substitute(
+                        business_name=business_name,
+                        pixels=pixels
+                    )
 
-            comments_script = """
-            function getText (el) {
-                return el && el.textContent.trim()
-            }
-
-            function resolveXpath (xpath) {
-                return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
-            }
-
-            function evaluateXpath (xpath) {
-                var result = resolveXpath(xpath)
-                return getText(result)
-            }
-
-            function gatherComments() {
-                const commentsWrapper = document.querySelectorAll("div[data-review-id^='Ch'][class*='fontBodyMedium ']")
-
-                Array.from(commentsWrapper).forEach((item) => {
-                    let dataReviewId = item.dataset['reviewId']
-                    try {
-                        // Sometimes there is a read more button
-                        // that we have to click
-
-                        moreButton = (
-                            // Try the "Voir plus" button"
-                            item.querySelector('button[aria-label="Voir plus"]') ||
-                            // Try the "See more" button"
-                            item.querySelector('button[aria-label="See more"]') ||
-                            // On last resort try "aria-expanded"
-                            item.querySelector('button[aria-expanded="false"]')
+                    try:
+                        current_scroll, scroll_height = self.driver.execute_script(
+                            scroll_bottom_script
                         )
-                        moreButton.click()
-                    } catch (e) {
-                        console.log('No "see more" button for review', dataReviewId)
-                    }
-                })
+                    except:
+                        logger.error('Could not scroll to bottom on comments')
 
-                return Array.from(commentsWrapper).map((item) => {
-                    let dataReviewId = item.dataset['reviewId']
+                    if current_scroll > 0:
+                        # When the current_scroll is in the last
+                        # three positions, we can safely break
+                        # the looop otherwise we'll have to
+                        # to the max of COMMENTS_SCROLL_ATTEMPTS
+                        if current_scroll in last_positions[:3]:
+                            last_positions = []
+                            break
+                    last_positions.append(current_scroll)
 
-                    // Or, .rsqaWe
-                    let period = getText(item.querySelector('.DU9Pgb'))
-                    let rating = item.querySelector('span[role="img"]') && item.querySelector('span[role="img"]').ariaLabel
-                    let text = getText(item.querySelector("*[class='MyEned']"))
-                    let reviewerName = getText(item.querySelector('[class*="d4r55"]'))
-                    let reviewerNumberOfReviews = getText(item.querySelector('*[class*="RfnDt"]'))
+                    # Increase the number of pixels to
+                    # get when we reach a certain level
+                    # of scrolling on the page
+                    if current_scroll > 10000:
+                        return_position = random.choice(last_positions[5:])
 
-                    return {
-                        google_review_id: dataReviewId,
-                        text,
-                        rating,
-                        period,
-                        reviewer_name: reviewerName,
-                        reviewer_number_of_reviews: reviewerNumberOfReviews
-                    }
-                })
-            }
+                    if current_scroll > 10000:
+                        pixels = pixels + 8000
+                    elif current_scroll > 20000:
+                        pixels = pixels + 15000
+                    else:
+                        pixels = pixels + 2000
 
-            return gatherComments()
-            """
-            comments = self.driver.execute_script(comments_script)
-            logger.info(f'Collected {len(comments)} comments')
+                    scroll_top_script = """
+                    const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
+                    const el = mainWrapper.querySelector('div[tabindex="-1"]')
+                    el.scroll({ top: $return_position, left: 0, behavior: "smooth" })
+                    """
+                    scroll_top_script = string.Template(scroll_top_script).substitute(
+                        business_name=business_name,
+                        return_position=return_position
+                    )
+                    self.driver.execute_script(scroll_top_script)
 
-            for comment in comments:
-                clean_comment = clean_dict(comment)
+                    count = count + 1
+                    logger.debug(
+                        f'Completed {count} of {COMMENTS_SCROLL_ATTEMPTS} scrolls')
+                    time.sleep(5)
 
-                text = clean_comment['text']
-                if text is not None:
-                    text1 = text.replace(';', ' ')
-                    text2 = text1.replace(',', ' ')
-                    clean_comment['text'] = text2
+                comments_script = """
+                function getText (el) {
+                    return el && el.textContent.trim()
+                }
 
-                instance = Review(**clean_comment)
-                business.reviews.append(instance)
-                self.COMMENTS.append(clean_comment)
+                function resolveXpath (xpath) {
+                    return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+                }
+
+                function evaluateXpath (xpath) {
+                    var result = resolveXpath(xpath)
+                    return getText(result)
+                }
+
+                function gatherComments() {
+                    const commentsWrapper = document.querySelectorAll("div[data-review-id^='Ch'][class*='fontBodyMedium ']")
+
+                    Array.from(commentsWrapper).forEach((item) => {
+                        let dataReviewId = item.dataset['reviewId']
+                        try {
+                            // Sometimes there is a read more button
+                            // that we have to click
+
+                            moreButton = (
+                                // Try the "Voir plus" button"
+                                item.querySelector('button[aria-label="Voir plus"]') ||
+                                // Try the "See more" button"
+                                item.querySelector('button[aria-label="See more"]') ||
+                                // On last resort try "aria-expanded"
+                                item.querySelector('button[aria-expanded="false"]')
+                            )
+                            moreButton.click()
+                        } catch (e) {
+                            console.log('No "see more" button for review', dataReviewId)
+                        }
+                    })
+
+                    return Array.from(commentsWrapper).map((item) => {
+                        let dataReviewId = item.dataset['reviewId']
+
+                        // Or, .rsqaWe
+                        let period = getText(item.querySelector('.DU9Pgb'))
+                        let rating = item.querySelector('span[role="img"]') && item.querySelector('span[role="img"]').ariaLabel
+                        let text = getText(item.querySelector("*[class='MyEned']"))
+                        let reviewerName = getText(item.querySelector('[class*="d4r55"]'))
+                        let reviewerNumberOfReviews = getText(item.querySelector('*[class*="RfnDt"]'))
+
+                        return {
+                            google_review_id: dataReviewId,
+                            text,
+                            rating,
+                            period,
+                            reviewer_name: reviewerName,
+                            reviewer_number_of_reviews: reviewerNumberOfReviews
+                        }
+                    })
+                }
+
+                return gatherComments()
+                """
+                comments = self.driver.execute_script(comments_script)
+                logger.info(f'Collected {len(comments)} comments')
+
+                for comment in comments:
+                    clean_comment = clean_dict(comment)
+
+                    text = clean_comment['text']
+                    if text is not None:
+                        text1 = text.replace(';', ' ')
+                        text2 = text1.replace(',', ' ')
+                        clean_comment['text'] = text2
+
+                    instance = Review(**clean_comment)
+                    business.reviews.append(instance)
+                    self.COMMENTS.append(clean_comment)
 
             self.collected_businesses.append(business)
             self.create_files(business, filename)
