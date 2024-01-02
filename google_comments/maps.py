@@ -604,8 +604,8 @@ class GooglePlace(GoogleMapsMixin):
 
     def start_spider(self, url, refresh=False, is_loop=False):
         self.is_running = True
-
-        self.driver.maximize_window()
+        if maximize_window:
+            self.driver.maximize_window()
 
         # if not self.keep_unique_file and self.filename is not None:
         self.filename = filename = create_filename()
