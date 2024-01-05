@@ -224,3 +224,9 @@ def create_argument_parser():
         help='Determines if the crawler should collect the reviews for the given business'
     )
     return parser
+
+
+def clean_raw_information(text):
+    t1 = text.replace('Revendiquer cet établissement', '')
+    text = t1.replace('Envoyer vers votre téléphone', '')
+    return text

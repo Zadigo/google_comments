@@ -123,9 +123,39 @@ COMMENTS_SCRIPT = """
 # Tests if the currentpage is a feed page 
 # or a Google Place page
 IS_FEED_PAGE_SCRIPT = """
-function resolveXpath (xpath) {
-    return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
-}
-const result = resolveXpath('//div[contains(@aria-label, "Résultats pour")][@role="feed"]')
-return result !== null
+    function resolveXpath (xpath) {
+        return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+    }
+    const result = resolveXpath('//div[contains(@aria-label, "Résultats pour")][@role="feed"]')
+    return result !== null
+"""
+
+
+# Use this script to return information such
+# as address, telephone... for a given business.
+# This script works when a Google Place card
+# has been clicked to display the modal to get 
+# additional information on the 
+# business (or "Overview" tab)
+ADDRESS_SCRIPT = """
+    function getText (el) {
+        return el && el.textContent
+    }
+
+    function resolveXpath (xpath) {
+        return document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+    }
+
+    function evaluateXpath (xpath) {
+        var result = resolveXpath(xpath)
+        return getText(result)
+    }
+
+    return {
+        feed_url: window.location.href,
+        address: evaluateXpath('//button[contains(@data-item-id, "address")]'),
+        telephone: evaluateXpath('//button[contains(@data-item-id, "tel")]'),
+        website: evaluateXpath('//a[contains(@data-item-id, "authority")]'),
+        raw_information: evaluateXpath('//div[contains(@aria-label, "Informations")][@role="region"][contains(@class, "m6QErb")]')
+    }
 """

@@ -35,6 +35,9 @@ class BaseModel:
     def url_stem(self):
         return pathlib.Path(str(self.url)).stem
 
+    def as_json(self):
+        pass
+
 
 @dataclass
 class Review(BaseModel):
@@ -114,16 +117,46 @@ class GoogleBusiness(BaseModel):
             data['number_of_reviews'].append(self.number_of_reviews)
         return pandas.DataFrame(data)
 
-    def get_gps_coordinates_from_url(self, substitute_url=None):
+    def get_gps_coordinates_from_feed_url(self):
         try:
-            result = re.search(
-                r'\@(\d+\.?\d+)\,?(\d+\.?\d+)',
-                substitute_url or self.feed_url or self.url
+            result = re.findall(
+                r'(\-?\d+\.\-?\d+)',
+                self.feed_url
             )
         except:
             return False
         else:
             if result:
-                self.latitude = result.group(1)
-                self.longitude = result.group(2)
-                return result.groups()
+                self.latitude = result[0]
+                self.longitude = result[1]
+                return result
+            return False
+            
+    def get_gps_coordinates_from_url(self, substitute_url=None):
+        try:
+            result = re.search(
+                r'\@(?P<lat>\d+\.?\d+)\,?(?P<long>\-?\d+\.?\d+)',
+                self.url
+            )
+        except:
+            return False
+        else:
+            if result:
+                data = result.groupdict()
+                self.latitude = data['lat']
+                self.longitude = data['long']
+                return data
+            
+
+@dataclass
+class SearchedBusinesses(BaseModel):
+    search_url: str = None
+    places: list = field(default_factory=list)
+    date: str = field(default=datetime.datetime.now(tz=pytz.UTC))
+
+    def as_json(self):
+        data = {
+            **{field: getattr(self, field) for field in self.fields},
+            'places': [place.as_json() for place in self.places]
+        }
+        return data
