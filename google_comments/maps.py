@@ -550,8 +550,7 @@ class GooglePlaces(GoogleMapsMixin):
                     self.driver.execute_script(scroll_top_script)
 
                     count = count + 1
-                    logger.debug(
-                        f'Completed {count} of {COMMENTS_SCROLL_ATTEMPTS} scrolls')
+                    # logger.debug(f'Completed {count} of {COMMENTS_SCROLL_ATTEMPTS} scrolls')
                     time.sleep(5)
 
                 comments_script = """
