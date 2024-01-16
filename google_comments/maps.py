@@ -288,7 +288,8 @@ class GoogleMapsMixin(SpiderMixin):
             self.create_comments_dataframe()
             logger.info(f'Created files: {filename} and {filename}_comments')
 
-        self.trigger_webhooks(data=business.as_json())
+        # TODO: Reimplement this functionnality later on
+        # self.trigger_webhooks(data=business.as_json())
         logger.info(f'Created files: business_{filename}')
 
     def start_spider(self, url):
@@ -737,7 +738,7 @@ class GooglePlace(GoogleMapsMixin):
                     return False
 
                 self.comments_scroll_counter.update({current_scroll: 1})
-                result = self.test_current_scroll_repetition(current_scroll)
+                result = self.test_current_scroll_repetition(self.comments_scroll_counter, current_scroll)
                 if result:
                     # DEBUG: Check the counter
                     logger.debug(f'{dict(self.comments_scroll_counter)}')
@@ -1132,38 +1133,37 @@ class SearchBusinesses(SearchLinks):
                 logger.error(f'Failed to collect busineses for: "{item.data}"')
 
 
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser('Google reviews')
-#     parser.add_argument(
-#         'name',
-#         type=str,
-#         help='The name of the review parser to use',
-#         choices=['place', 'places', 'search']
-#     )
-#     parser.add_argument('url', type=str, help='The url to visit')
-#     parser.add_argument(
-#         '-w',
-#         '--webhook',
-#         type=str,
-#         help='The webhook to use in order to send data'
-#     )
-#     namespace = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser('Google reviews')
+    parser.add_argument(
+        'name',
+        type=str,
+        help='The name of the review parser to use',
+        choices=['place', 'places', 'search']
+    )
+    parser.add_argument('url', type=str, help='The url to visit')
+    parser.add_argument(
+        '-w',
+        '--webhook',
+        type=str,
+        help='The webhook to use in order to send data'
+    )
+    namespace = parser.parse_args()
 
-#     if namespace.name == 'place':
-#         klass = GooglePlace
-#     elif namespace.name == 'places':
-#         klass = GooglePlaces
+    if namespace.name == 'place':
+        klass = GooglePlace
+    elif namespace.name == 'places':
+        klass = GooglePlaces
 
-#     result = check_url(namespace.name, namespace.url)
-#     if result:
-#         try:
-#             instance = klass()
-#             # instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
-#             instance.start_spider(namespace.url)
-#         except Exception as e:
-#             logger.critical(e)
-#         except KeyboardInterrupt:
-#             logger.info('Program stopped')
+    result = check_url(namespace.name, namespace.url)
+    if result:
+        try:
+            instance = klass()
+            instance.start_spider(namespace.url)
+        except Exception as e:
+            logger.critical(e)
+        except KeyboardInterrupt:
+            logger.info('Program stopped')
 
 # instance = SearchLinks()
 # try:
@@ -1178,11 +1178,11 @@ class SearchBusinesses(SearchLinks):
 # instance.collect_reviews = False
 # instance.iterate_urls()
 
-instance = SearchBusinesses(output_folder='concurrence_aprium')
-try:
-    instance.start_spider()
-except Exception as e:
-    instance.after_fail(exception=e)
+# instance = SearchBusinesses(output_folder='concurrence_aprium')
+# try:
+#     instance.start_spider()
+# except Exception as e:
+#     instance.after_fail(exception=e)
 
 # if __name__ == '__main__':
 #     parser = create_argument_parser()
