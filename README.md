@@ -21,7 +21,6 @@ You can either call the spider for a single url for a list of urls that you woul
 
 ```python
 instance = GooglePlace(output_folder='my_folder_name')
-instance.collect_reviews = False
 instance.iterate_urls()
 ```
 
