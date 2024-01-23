@@ -297,6 +297,9 @@ class GoogleMapsMixin(SpiderMixin):
 
 
 class GooglePlaces(GoogleMapsMixin):
+    """This automater uses a Google Maps link that references
+    a feed of multiple places to scrap data from : /maps/search/"""
+    
     def get_dataframe(self):
         data = defaultdict(list)
         for business in self.flatten():
@@ -1138,7 +1141,7 @@ if __name__ == '__main__':
         'name',
         type=str,
         help='The name of the review parser to use',
-        choices=['place', 'places', 'search']
+        choices=['place', 'places', 'searchlinks', 'searchbusiness']
     )
     parser.add_argument('url', type=str, help='The url to visit')
     parser.add_argument(
