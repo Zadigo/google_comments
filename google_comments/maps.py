@@ -808,10 +808,10 @@ class GooglePlace(GoogleMapsMixin):
             return True
 
     def iterate_urls(self):
-        """From a file called `media/google_place_urls.csv` containing a set of 
-        Google url places, iterate and extract the comments for each 
+        """From a file called `media/google_place_urls.csv` containing a 
+        set of Google url places, iterate and extract the comments for each 
         Google Place. This calls `start_spider` in a loop passing 
-        the current url."""
+        the current url"""
         try:
             df = pandas.read_csv(
                 MEDIA_PATH / 'google_place_urls.csv',
