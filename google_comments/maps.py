@@ -857,8 +857,11 @@ class GooglePlace(GoogleMapsMixin):
         for item in df.itertuples(name='GooglePlace'):
             try:
                 self.driver.maximize_window()
-                self.start_spider(item.url, is_loop=True,
-                                  maximize_window=False)
+                self.start_spider(
+                    item.url,
+                    is_loop=True,
+                    maximize_window=False
+                )
             except Exception as e:
                 logger.error(f"Error trying to get url: {item.url}")
                 logger.error(e)
