@@ -842,11 +842,17 @@ class GooglePlace(GoogleMapsMixin):
         duplicate_rows = df[df['is_duplicate'] == True]
         if duplicate_rows['url'].count() > 0:
             logger.warning(
-                f"{duplicate_rows.count()} duplicate urls in your file")
+                f"{duplicate_rows.count()} duplicate "
+                "urls in your file"
+            )
 
-        # completed_urls_csv = self.output_folder_path.joinpath('completed_urls.csv')
-        # completed_urls = pandas.read_csv(self.output_folder_path.joinpath('completed_urls.csv'))
-        # none_visited = duplicated_rows['url'].isin(completed_urls['0'])
+        # Remove urls that we have already visited on
+        # previous run of the spider if the "completed_urls.csv"
+        # file exists in the project
+        df['exists'] = df['url'].isin(completed_urls_df['url'])
+        existing_urls = df[df['exists'] == True]
+        if existing_urls['url'].count():
+            df = df[df['exists'] == False]
 
         for item in df.itertuples(name='GooglePlace'):
             try:
