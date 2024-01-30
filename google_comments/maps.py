@@ -1165,7 +1165,7 @@ class SearchBusinesses(SearchLinks):
 
                 filename = create_filename(prefix='searched_business')
                 file_helpers.write_json_file(self.output_folder_path.joinpath(
-                    f'{filename}.json'), 
+                    f'{filename}.json'),
                     self.flatten()
                 )
                 self.collected_search = []
