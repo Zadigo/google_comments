@@ -301,7 +301,7 @@ class GoogleMapsMixin(SpiderMixin):
 class GooglePlaces(GoogleMapsMixin):
     """This automater uses a Google Maps link that references
     a feed of multiple places to scrap data from : /maps/search/"""
-    
+
     def get_dataframe(self):
         data = defaultdict(list)
         for business in self.flatten():
@@ -461,7 +461,7 @@ class GooglePlaces(GoogleMapsMixin):
             seen_urls_path = self.output_folder_path.joinpath(
                 f'{filename}_urls_seen.csv'
             )
-            
+
             with open(seen_urls_path, newline='\n', mode='a') as f:
                 writer = csv.writer(f)
                 writer.writerow([business.name, business.feed_url])
@@ -788,8 +788,11 @@ class GooglePlace(GoogleMapsMixin):
                     f"Completed {count} of "
                     f"{COMMENTS_SCROLL_ATTEMPTS} scrolls"
                 )
-                time.sleep(5)
+                time.sleep(COMMENTS_SCROLL_WAIT_TIME)
 
+            # Execute the script two times so that we can get
+            # comments with a lot of text
+            # self.driver.execute_script(constants.COMMENTS_SCRIPT)
             comments = self.driver.execute_script(constants.COMMENTS_SCRIPT)
             logger.info(f'Collected {len(comments)} comments')
 
@@ -836,7 +839,7 @@ class GooglePlace(GoogleMapsMixin):
             return False
         else:
             logger.info(f"Loaded {df['url'].count()} urls")
-            
+
             df['completed'] = False
 
             completed_urls_path = MEDIA_PATH / 'completed_urls.csv'
@@ -892,6 +895,22 @@ class GooglePlace(GoogleMapsMixin):
                     encoding='utf-8'
                 )
                 time.sleep(random.randrange(4, 8))
+
+
+class GoogleSearch(GoogleMapsMixin):
+    def start_spider(self, url):
+        self.before_launch()
+
+        self.driver.get(url)
+
+        can_click = True
+        while can_click:
+            reviews = self.driver.execute_async_script(
+                constants.GOOGLE_REVIEWS_FROM_GOOGLE_SEARCH)
+            reviews_objs = []
+            for review in reviews:
+                reviews_objs.append(Review(**review))
+            time.sleep(5)
 
 
 class SearchLinks(SpiderMixin):
@@ -1120,7 +1139,8 @@ class SearchBusinesses(SearchLinks):
                     image = soup.find('span', attrs={'role': 'img'})
                     if image is not None:
                         rating_and_review_count = image.attrs.get('aria-label')
-                        rating, review_count = rating_and_review_count.split(' ')
+                        rating, review_count = rating_and_review_count.split(
+                            ' ')
 
                         rating = text_parser(rating)
                         review_count = text_parser(review_count)
@@ -1263,8 +1283,7 @@ if __name__ == '__main__':
 #     instance.create_file(prefix='dump')
 #     logger.error(e)
 
-# instance = GooglePlace(output_folder='concurrents_aprium')
-# instance.collect_reviews = False
+# instance = GooglePlace(output_folder='concurrents_aprium2')
 # instance.iterate_urls()
 
 # instance = SearchBusinesses(output_folder='concurrence_aprium')
