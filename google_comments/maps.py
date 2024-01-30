@@ -42,6 +42,8 @@ COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
 
 FEED_SCROLL_ATTEMPTS = 30
 
+COMMENTS_SCROLL_WAIT_TIME = 5
+
 
 class SpiderMixin:
     """Global base functionnalities that implemented
