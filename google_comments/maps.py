@@ -747,7 +747,10 @@ class GooglePlace(GoogleMapsMixin):
                     return False
 
                 self.comments_scroll_counter.update({current_scroll: 1})
-                result = self.test_current_scroll_repetition(self.comments_scroll_counter, current_scroll)
+                result = self.test_current_scroll_repetition(
+                    self.comments_scroll_counter, 
+                    current_scroll
+                )
                 if result:
                     # DEBUG: Check the counter
                     logger.debug(f'{dict(self.comments_scroll_counter)}')
