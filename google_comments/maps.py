@@ -1179,30 +1179,75 @@ if __name__ == '__main__':
         'name',
         type=str,
         help='The name of the review parser to use',
-        choices=['place', 'places', 'searchlinks', 'searchbusiness']
+        choices=['place', 'places', 'searchlinks', 'searchbusinesses']
     )
-    parser.add_argument('url', type=str, help='The url to visit')
+    parser.add_argument(
+        'url',
+        type=str,
+        help='The url to visit'
+    )
+    parser.add_argument(
+        '-f',
+        '--folder',
+        type=str
+    )
     parser.add_argument(
         '-w',
         '--webhook',
         type=str,
         help='The webhook to use in order to send data'
     )
+    parser.add_argument(
+        '-cwt',
+        '--comments-scroll-time',
+        type=int
+    )
+    parser.add_argument(
+        '-csa',
+        '--comment-scroll-attempts',
+        type=int
+    )
+    parser.add_argument(
+        '-n',
+        type=bool
+    )
     namespace = parser.parse_args()
+
+    if namespace.comments_scroll_time is not None:
+        COMMENTS_SCROLL_WAIT_TIME = namespace.comments_scroll_time
+
+    if namespace.comment_scroll_attempts is not None:
+        COMMENTS_SCROLL_ATTEMPTS = namespace.comment_scroll_attempts
 
     if namespace.name == 'place':
         klass = GooglePlace
     elif namespace.name == 'places':
         klass = GooglePlaces
+    elif namespace.name ==  'searchlinks':
+        klass = SearchLinks
 
-    result = check_url(namespace.name, namespace.url)
-    if result:
+    if namespace.name == 'place' or namespace.name == 'places':
+        result = check_url(namespace.name, namespace.url)
+
+        if result:
+            instance = klass(output_folder=namespace.folder)
+            try:
+                instance.start_spider(namespace.url)
+            except Exception as e:
+                instance.after_fail(exception=e)
+                logger.critical(e)
+            except KeyboardInterrupt:
+                instance.after_fail(exception=e)
+                logger.info('Program stopped')
+    else:
+        instance = klass(output_folder=namespace.folder)
         try:
-            instance = klass()
-            instance.start_spider(namespace.url)
+            instance.start_spider()
         except Exception as e:
+            instance.after_fail(exception=e)
             logger.critical(e)
         except KeyboardInterrupt:
+            instance.after_fail(exception=e)
             logger.info('Program stopped')
 
 
