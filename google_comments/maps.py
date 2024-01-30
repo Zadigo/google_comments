@@ -669,10 +669,15 @@ class GooglePlace(GoogleMapsMixin):
 
         # 2. Get the business information: name, website, address etc.
         details = self.driver.execute_script(
-            constants.BUSINESS_INFORMATION_SCRIPT)
-        result = re.search(r'(\d+)', details['number_of_reviews'])
-        if result:
-            details['number_of_reviews'] = result.group(1)
+            constants.BUSINESS_INFORMATION_SCRIPT
+        )
+
+        number_of_reviews = details['number_of_reviews']
+        if number_of_reviews is not None:
+            result = re.search(r'(\d+)', number_of_reviews)
+
+            if result:
+                details['number_of_reviews'] = result.group(1)
 
         details = clean_dict(details)
         business = GoogleBusiness(**details)
