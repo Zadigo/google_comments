@@ -60,7 +60,8 @@ class SpiderMixin:
         self.feed_scroll_counter = Counter()
 
         if output_folder is not None:
-            self.output_folder_path = self.output_folder_path.joinpath(output_folder)
+            self.output_folder_path = self.output_folder_path.joinpath(
+                output_folder)
             if not self.output_folder_path.exists():
                 self.output_folder_path.mkdir()
 
