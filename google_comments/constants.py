@@ -159,3 +159,49 @@ ADDRESS_SCRIPT = """
         raw_information: evaluateXpath('//div[contains(@aria-label, "Informations")][@role="region"][contains(@class, "m6QErb")]')
     }
 """
+
+
+GOOGLE_REVIEWS_FROM_GOOGLE_SEARCH = """
+function getText (el) {
+    return el && el.textContent
+}
+
+function clickElement (el) {
+    el && el.click()
+}
+
+function parseComments () {
+    return Array.from(document.querySelectorAll('.gws-localreviews__google-review')).map(x => {
+        const readMore = x.querySelector('a[class="review-more-link"][role="button"][aria-expanded="false"]')
+        clickElement(readMore)
+
+        const ratingElement = x.querySelector('span[aria-label][role="img"]')
+        const periodElement = ratingElement.nextElementSibling
+        const info = getText(x.querySelector('.A503be'))
+        return {
+            google_review_id: null,
+            snippet: getText(x.querySelector('span[class="review-snippet"]')),
+            text: (
+                getText(x.querySelector('span[class="review-full-text"]')) ||
+                getText(x.querySelector('.Jtu6Td'))
+            ),
+            rating: ratingElement.ariaLabel,
+            period: getText(periodElement),
+            reviewer_name: x.querySelector('img').alt,
+            reviewer_number_of_reviews: info
+        }
+    })
+}
+
+function loadComments() {
+    setTimeout(() => {
+        document.querySelector('.YFJBee').scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" })
+        document.querySelector('.YFJBee').click()
+    }, 2000)
+    const comments = parseComments()
+    localStorage.setItem('coments', JSON.stringify(comments))
+    return comments
+}
+
+return loadComments()
+"""
