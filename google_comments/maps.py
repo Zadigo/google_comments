@@ -884,10 +884,13 @@ class GooglePlace(GoogleMapsMixin):
                 logger.error(e)
                 continue
             else:
-                path = self.output_folder_path.joinpath('completed_urls.csv')
-                with open(path, mode='a', newline='\n', encoding='utf-8') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([item.url])
+                df.loc[item.Index, 'completed'] = True
+                completed_urls_df = df[df['url'] == True]
+                completed_urls_df.to_csv(
+                    completed_urls_path,
+                    index=False,
+                    encoding='utf-8'
+                )
                 time.sleep(random.randrange(4, 8))
 
 
