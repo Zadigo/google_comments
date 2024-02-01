@@ -154,9 +154,6 @@ class GoogleMapsMixin(SpiderMixin):
         # self.trigger_webhooks(data=business.as_json())
         logger.info(f'Created files: business_{filename}')
 
-    def start_spider(self, url):
-        pass
-
 
 class GooglePlaces(GoogleMapsMixin):
     """This automater uses a Google Maps link that references

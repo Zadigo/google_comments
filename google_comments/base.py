@@ -168,3 +168,6 @@ class SpiderMixin:
         else:
             time.sleep(5)
             return True
+
+    def start_spider(self, url):
+        pass
