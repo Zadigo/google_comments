@@ -1,7 +1,7 @@
 import argparse
 
-from google_comments import check_url, logger
-from google_comments.maps import GooglePlaces
+from google_comments import check_url, create_argument_parser, logger
+from google_comments.maps import GooglePlace, GooglePlaces
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Google reviews')
@@ -11,14 +11,28 @@ if __name__ == '__main__':
         help='The name of the review parser to user', 
         choices=['place', 'places']
     )
-    parser.add_argument('url', type=str, help='The url to visit')
+    parser.add_argument(
+        'url', 
+        type=str, 
+        help='The url to visit'
+    )
     parser.add_argument(
         '-w',
         '--webhook', 
         type=str,
         help='Webhook to send data'
     )
+    parser.add_argument(
+        '-c',
+        '--collect-reviews',
+        type=bool,
+        default=True,
+        help='Determines if the crawler should collect the reviews for the given business'
+    )
     namespace = parser.parse_args()
+
+    # parser = create_argument_parser()
+    # namespace = parser.parse_args()
 
     if namespace.name == 'place':
         klass = GooglePlace
@@ -27,10 +41,12 @@ if __name__ == '__main__':
 
     result = check_url(namespace.name, namespace.url)
     if result:
-
         try:
             instance = klass()
-            # instance.webhook_urls = ['http://127.0.0.1:8000/api/v1/google-comments/review/bulk']
+   
+            if namespace.collect_reviews:
+                instance.collect_reviews = namespace.collect_reviews
+
             instance.start_spider(namespace.url)
         except Exception as e:
             logger.critical(e)

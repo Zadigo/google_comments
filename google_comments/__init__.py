@@ -1,3 +1,5 @@
+import argparse
+import csv
 import dataclasses
 import datetime
 import logging
@@ -129,7 +131,6 @@ def get_selenium_browser_instance(headless=False, load_images=True, load_js=True
         proxy.proxy_type = ProxyType.MANUAL
         proxy.http_proxy = PROXY_IP_ADDRESS
         options.add_argument(f'--proxy-server=http://{PROXY_IP_ADDRESS}')
-        options.add_argument('--disable-gpu')
 
     service = Service(EdgeChromiumDriverManager().install())
     return Edge(service=service, options=options)
@@ -196,3 +197,35 @@ def create_filename(*, prefix=None, suffix=None, include_date=True):
 async def write_json_file(filename, data):
     with open(MEDIA_PATH / filename, mode='w', encoding='utf-8') as f:
         json.dump(data, f)
+
+
+def create_argument_parser():
+    """Create an new argument parser"""
+    parser = argparse.ArgumentParser(prog='Google reviews')
+    parser.add_argument(
+        'name',
+        type=str,
+        help='The name of the review parser to user',
+        choices=['place', 'places']
+    )
+    parser.add_argument('url', type=str, help='The url to visit')
+    parser.add_argument(
+        '-w',
+        '--webhook',
+        type=str,
+        help='Webhook to send data'
+    )
+    parser.add_argument(
+        '-c',
+        '--collect-reviews',
+        type=bool,
+        default=True,
+        help='Determines if the crawler should collect the reviews for the given business'
+    )
+    return parser
+
+
+def clean_raw_information(text):
+    t1 = text.replace('Revendiquer cet établissement', '')
+    text = t1.replace('Envoyer vers votre téléphone', '')
+    return text
