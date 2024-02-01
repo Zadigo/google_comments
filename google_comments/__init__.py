@@ -131,7 +131,6 @@ def get_selenium_browser_instance(headless=False, load_images=True, load_js=True
         proxy.proxy_type = ProxyType.MANUAL
         proxy.http_proxy = PROXY_IP_ADDRESS
         options.add_argument(f'--proxy-server=http://{PROXY_IP_ADDRESS}')
-        options.add_argument('--disable-gpu')
 
     service = Service(EdgeChromiumDriverManager().install())
     return Edge(service=service, options=options)
