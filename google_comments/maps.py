@@ -32,10 +32,6 @@ from google_comments.utilities import encoders, file_helpers
 from google_comments.utilities.file_helpers import write_csv_file
 from google_comments.utilities.text import slugify
 
-# COMMENTS_SCROLL_ATTEMPTS = int(os.getenv('COMMENTS_SCROLL_ATTEMPTS', 30))
-
-# FEED_SCROLL_ATTEMPTS = int(os.getenv('FEED_SCROLL_ATTEMPTS', 30))
-
 
 COMMENTS_SCROLL_ATTEMPTS = 50
 
@@ -527,14 +523,14 @@ class GooglePlace(GoogleMapsMixin):
 
         details = clean_dict(details)
         business = GoogleBusiness(**details)
-        
+
         # Get the business url once again because the coordinates
         # can get slightly updated once the map loads completly
-        updated_business_url = self.driver.execute_script("""return window.location.href""")
+        updated_business_url = self.driver.execute_script(
+            """return window.location.href""")
         business.url = updated_business_url
 
         business.get_gps_coordinates_from_url()
-
 
         # 3. Get all/if not most of the reviews left
         # for the current business. NOTE: When trying
@@ -601,7 +597,7 @@ class GooglePlace(GoogleMapsMixin):
 
                 self.comments_scroll_counter.update({current_scroll: 1})
                 result = self.test_current_scroll_repetition(
-                    self.comments_scroll_counter, 
+                    self.comments_scroll_counter,
                     current_scroll
                 )
                 if result:
@@ -700,7 +696,7 @@ class GooglePlace(GoogleMapsMixin):
                 completed_urls_df = pandas.DataFrame(data={'url': []})
                 completed_urls_df.to_csv(
                     completed_urls_path,
-                    encoding='utf-8', 
+                    encoding='utf-8',
                     index=False
                 )
             else:
@@ -1051,184 +1047,78 @@ class SearchBusinesses(SearchLinks):
 
 
 if __name__ == '__main__':
-    # from threading import Thread
+    parser = argparse.ArgumentParser('Google reviews')
+    parser.add_argument(
+        'name',
+        type=str,
+        help='The name of the review parser to use',
+        choices=['place', 'places', 'searchlinks', 'searchbusinesses']
+    )
+    parser.add_argument(
+        'url',
+        type=str,
+        help='The url to visit'
+    )
+    parser.add_argument(
+        '-f',
+        '--folder',
+        type=str
+    )
+    parser.add_argument(
+        '-w',
+        '--webhook',
+        type=str,
+        help='The webhook to use in order to send data'
+    )
+    parser.add_argument(
+        '-cwt',
+        '--comments-scroll-time',
+        type=int
+    )
+    parser.add_argument(
+        '-csa',
+        '--comment-scroll-attempts',
+        type=int
+    )
+    parser.add_argument(
+        '-n',
+        type=bool
+    )
+    namespace = parser.parse_args()
 
-    place = GooglePlace(output_folder='magasins_centre_commerciaux')
-    place.collect_reviews = False
-    place.iterate_urls()
-    # thread = Thread(target=place.iterate_urls(), name='google_comments')
-    # thread.start()
-    # thread.join()
+    if namespace.comments_scroll_time is not None:
+        COMMENTS_SCROLL_WAIT_TIME = namespace.comments_scroll_time
 
+    if namespace.comment_scroll_attempts is not None:
+        COMMENTS_SCROLL_ATTEMPTS = namespace.comment_scroll_attempts
 
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser('Google reviews')
-#     parser.add_argument(
-#         'name',
-#         type=str,
-#         help='The name of the review parser to use',
-#         choices=['place', 'places', 'searchlinks', 'searchbusinesses']
-#     )
-#     parser.add_argument(
-#         'url',
-#         type=str,
-#         help='The url to visit'
-#     )
-#     parser.add_argument(
-#         '-f',
-#         '--folder',
-#         type=str
-#     )
-#     parser.add_argument(
-#         '-w',
-#         '--webhook',
-#         type=str,
-#         help='The webhook to use in order to send data'
-#     )
-#     parser.add_argument(
-#         '-cwt',
-#         '--comments-scroll-time',
-#         type=int
-#     )
-#     parser.add_argument(
-#         '-csa',
-#         '--comment-scroll-attempts',
-#         type=int
-#     )
-#     parser.add_argument(
-#         '-n',
-#         type=bool
-#     )
-#     namespace = parser.parse_args()
+    if namespace.name == 'place':
+        klass = GooglePlace
+    elif namespace.name == 'places':
+        klass = GooglePlaces
+    elif namespace.name == 'searchlinks':
+        klass = SearchLinks
 
-#     if namespace.comments_scroll_time is not None:
-#         COMMENTS_SCROLL_WAIT_TIME = namespace.comments_scroll_time
+    if namespace.name == 'place' or namespace.name == 'places':
+        result = check_url(namespace.name, namespace.url)
 
-#     if namespace.comment_scroll_attempts is not None:
-#         COMMENTS_SCROLL_ATTEMPTS = namespace.comment_scroll_attempts
-
-#     if namespace.name == 'place':
-#         klass = GooglePlace
-#     elif namespace.name == 'places':
-#         klass = GooglePlaces
-#     elif namespace.name ==  'searchlinks':
-#         klass = SearchLinks
-
-#     if namespace.name == 'place' or namespace.name == 'places':
-#         result = check_url(namespace.name, namespace.url)
-
-#         if result:
-#             instance = klass(output_folder=namespace.folder)
-#             try:
-#                 instance.start_spider(namespace.url)
-#             except Exception as e:
-#                 instance.after_fail(exception=e)
-#                 logger.critical(e)
-#             except KeyboardInterrupt:
-#                 instance.after_fail(exception=e)
-#                 logger.info('Program stopped')
-#     else:
-#         instance = klass(output_folder=namespace.folder)
-#         try:
-#             instance.start_spider()
-#         except Exception as e:
-#             instance.after_fail(exception=e)
-#             logger.critical(e)
-#         except KeyboardInterrupt:
-#             instance.after_fail(exception=e)
-#             logger.info('Program stopped')
-
-
-# instance = SearchLinks()
-# try:
-#     instance.start_spider()
-# except KeyboardInterrupt:
-#     instance.create_file(prefix='dump')
-# except Exception as e:
-#     instance.create_file(prefix='dump')
-#     logger.error(e)
-
-# instance = GooglePlace(output_folder='concurrents_aprium2')
-# instance.iterate_urls()
-
-# instance = SearchBusinesses(output_folder='concurrence_aprium')
-# try:
-#     instance.start_spider()
-# except Exception as e:
-#     instance.after_fail(exception=e)
-
-# if __name__ == '__main__':
-#     parser = create_argument_parser()
-#     try:
-#         namespace = parser.parse_args()
-#     except Exception:
-#         raise
-
-#     if namespace.name == 'place':
-#         klass = GooglePlace
-#     elif namespace.name == 'places':
-#         klass = GooglePlaces
-
-#     result = check_url(namespace.name, namespace.url)
-#     if result:
-#         try:
-#             instance = klass()
-
-#             if namespace.collect_reviews:
-#                 instance.collect_reviews = namespace.collect_reviews
-
-#             instance.start_spider(namespace.url)
-#         except Exception as e:
-#             logger.critical(e)
-#         except KeyboardInterrupt:
-#             logger.info('Program stopped')
-
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser('Google reviews')
-#     parser.add_argument(
-#         'name',
-#         type=str,
-#         help='The name of the review parser to user',
-#         choices=['place', 'places']
-#     )
-#     parser.add_argument(
-#         'url',
-#         type=str,
-#         help='The url to visit'
-#     )
-#     parser.add_argument(
-#         '-w',
-#         '--webhook',
-#         type=str,
-#         help='Webhook to send data'
-#     )
-#     parser.add_argument(
-#         '-s',
-#         '--skip-reviews',
-#         type=str,
-#         default=True,
-#         help='Determines if the crawler should not collect the reviews for the given business'
-#     )
-#     namespace = parser.parse_args()
-
-#     # parser = create_argument_parser()
-#     # namespace = parser.parse_args()
-
-#     if namespace.name == 'place':
-#         klass = GooglePlace
-#     elif namespace.name == 'places':
-#         klass = GooglePlaces
-
-#     result = check_url(namespace.name, namespace.url)
-#     if result:
-#         try:
-#             instance = klass()
-
-#             if namespace.skip_reviews:
-#                 instance.collect_reviews = False
-
-#             instance.start_spider(namespace.url)
-#         except Exception as e:
-#             logger.critical(e)
-#         except KeyboardInterrupt:
-#             logger.info('Program stopped')
+        if result:
+            instance = klass(output_folder=namespace.folder)
+            try:
+                instance.start_spider(namespace.url)
+            except Exception as e:
+                instance.after_fail(exception=e)
+                logger.critical(e)
+            except KeyboardInterrupt:
+                instance.after_fail(exception=e)
+                logger.info('Program stopped')
+    else:
+        instance = klass(output_folder=namespace.folder)
+        try:
+            instance.start_spider()
+        except Exception as e:
+            instance.after_fail(exception=e)
+            logger.critical(e)
+        except KeyboardInterrupt:
+            instance.after_fail(exception=e)
+            logger.info('Program stopped')
