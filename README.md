@@ -24,6 +24,14 @@ instance = GooglePlace(output_folder='my_folder_name')
 instance.iterate_urls()
 ```
 
+## Search links
+
+If you need to obtain Google Maps links for businesses, you need to first create a file called `search_data.csv` in which you need at least a column called `data` and eventually a column called `address` and/or `zip code`. A concatenation of these three values will create a search value that we will be using to automate searching Google Maps links for businesses.
+
+## Search business
+
+Unless the above the automater which only returns links, this automater will return business information provided a given search. The mechanism for retrieving the data works in the same way as the above automater.
+
 
 ## Calling a spider
 

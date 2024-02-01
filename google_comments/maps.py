@@ -874,8 +874,8 @@ class SearchLinks(SpiderMixin):
 class SearchBusinesses(SearchLinks):
     """This automater reads a file containing searches to be executed
     for example `restaurants lille` in the search input of Google Maps
-    and will then retrieve all the businesses that are available for the
-    given query from the results page"""
+    and will then retrieve all the business information that are available 
+    for the given query from the results page"""
 
     collected_search = []
     searches = []
