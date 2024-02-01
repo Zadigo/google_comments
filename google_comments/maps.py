@@ -15,6 +15,11 @@ from collections import Counter, defaultdict
 
 import pandas
 import pytz
+from google_comments.base import SpiderMixin
+from google_comments.models import GoogleBusiness, Review
+from google_comments.utilities import encoders, file_helpers
+from google_comments.utilities.file_helpers import write_csv_file
+from google_comments.utilities.text import slugify
 from requests.auth import HTTPBasicAuth
 from requests.models import Request
 from requests.sessions import Session
@@ -26,12 +31,6 @@ from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
                              create_argument_parser, create_filename,
                              get_selenium_browser_instance, get_soup, logger,
                              models, simple_clean_text, text_parser)
-from google_comments.base import SpiderMixin
-from google_comments.models import GoogleBusiness, Review
-from google_comments.utilities import encoders, file_helpers
-from google_comments.utilities.file_helpers import write_csv_file
-from google_comments.utilities.text import slugify
-
 
 COMMENTS_SCROLL_ATTEMPTS = 50
 
@@ -746,22 +745,6 @@ class GooglePlace(GoogleMapsMixin):
                 time.sleep(random.randrange(18, 25))
 
 
-class GoogleSearch(GoogleMapsMixin):
-    def start_spider(self, url):
-        self.before_launch()
-
-        self.driver.get(url)
-
-        can_click = True
-        while can_click:
-            reviews = self.driver.execute_async_script(
-                constants.GOOGLE_REVIEWS_FROM_GOOGLE_SEARCH)
-            reviews_objs = []
-            for review in reviews:
-                reviews_objs.append(Review(**review))
-            time.sleep(5)
-
-
 class SearchLinks(SpiderMixin):
     """This automater reads a csv file called `search_data.csv`
     which contains a column called `data` containing a business
@@ -892,7 +875,7 @@ class SearchBusinesses(SearchLinks):
     """This automater reads a file containing searches to be executed
     for example `restaurants lille` in the search input of Google Maps
     and will then retrieve all the businesses that are available for the
-    given query"""
+    given query from the results page"""
 
     collected_search = []
     searches = []
