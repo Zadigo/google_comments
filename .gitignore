@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 
-.old
+media/
 
 .DS_Store
 .thumbs.db
