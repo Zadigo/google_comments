@@ -112,6 +112,7 @@ class GoogleMapsMixin(SpiderMixin):
         """Flatten the saved dataclasses to dictionnaries"""
         return [business.as_json() for business in self.collected_businesses]
 
+    # TODO: Simplify this section
     def create_comments_dataframe(self, *, save=True, columns=['text', 'rating']):
         """Return the comments using only a specific set
         of columns and eventually save the file"""
@@ -135,6 +136,7 @@ class GoogleMapsMixin(SpiderMixin):
             )
         return df
 
+    # TODO: Simplify this section pandas
     def create_files(self, business, filename):
         """Create the files to store the comments, the business information
         and the clean comments as a csv. This will also trigger the
@@ -1093,7 +1095,7 @@ if __name__ == '__main__':
                 instance.after_fail(exception=e)
                 logger.critical(e)
             except KeyboardInterrupt:
-                instance.after_fail(exception=e)
+                instance.after_fail()
                 logger.info('Program stopped')
     else:
         instance = klass(output_folder=namespace.folder)
