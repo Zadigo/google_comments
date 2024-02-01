@@ -33,8 +33,8 @@ from google_comments.utilities.text import slugify
 
 
 class SpiderMixin:
-    """Global base functionnalities that implemented
-    for a Google Maps spider"""
+    """Global base functionnalities to be implemented
+    for a Google Maps or a Google Search spider"""
 
     collected_businesses = []
 
