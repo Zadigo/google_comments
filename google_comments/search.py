@@ -1,3 +1,4 @@
+from google_comments.base import SpiderMixin
 
-
-class GoogleSearch
+class GoogleSearch(SpiderMixin):
+    def 
