@@ -1,9 +1,14 @@
+import argparse
+import csv
 import dataclasses
+import datetime
 import logging
 import pathlib
 import re
+import secrets
 
 import dotenv
+import pytz
 import unidecode
 from bs4 import BeautifulSoup
 from selenium.webdriver import Edge, EdgeOptions
@@ -20,20 +25,21 @@ MEDIA_PATH = PROJECT_PATH / 'media'
 dotenv.load_dotenv(PROJECT_PATH / '.env')
 
 
-def simple_clean_text(text):
+def simple_clean_text(text, remove_accents=True):
     if text is None:
         return text
     else:
-        text = unidecode.unidecode(str(text).strip())
+        if remove_accents:
+            text = unidecode.unidecode(str(text).strip())
         tokens = text.split(' ')
         return ' '.join(filter(lambda x: x != '', tokens))
 
 
 def clean_dict(item):
-    def clean_value(value):
+    def clean_value(value, remove_accents=True):
         text = value.encode('utf-8').decode()
         text = text.replace('\n', '')
-        return simple_clean_text(text)
+        return simple_clean_text(text, remove_accents=remove_accents)
 
     if dataclasses.is_dataclass(item):
         for field in item.fields:
@@ -45,7 +51,10 @@ def clean_dict(item):
             if value is None:
                 new_dict[key] = value
             else:
-                new_dict[key] = clean_value(value)
+                if key == 'name':
+                    new_dict[key] = clean_value(value, remove_accents=False)
+                else:
+                    new_dict[key] = clean_value(value)
         return new_dict
 
 
@@ -122,7 +131,6 @@ def get_selenium_browser_instance(headless=False, load_images=True, load_js=True
         proxy.proxy_type = ProxyType.MANUAL
         proxy.http_proxy = PROXY_IP_ADDRESS
         options.add_argument(f'--proxy-server=http://{PROXY_IP_ADDRESS}')
-        options.add_argument('--disable-gpu')
 
     service = Service(EdgeChromiumDriverManager().install())
     return Edge(service=service, options=options)
@@ -154,10 +162,70 @@ def text_parser(text):
 
 def check_url(spider_type, url):
     if spider_type == 'place' and '/maps/place/' not in url:
-        logger.error(f"url is not valid for {spider_type}")
+        logger.error(
+            f"url is not valid for {spider_type}. "
+            "Url should contain /maps/place/"
+        )
         return False
 
     if spider_type == 'places' and '/maps/search/' not in url:
-        logger.error(f"url is not valid for {spider_type}")
+        logger.error(
+            f"url is not valid for {spider_type}. "
+            "Url should contain /maps/search/"
+        )
         return False
     return True
+
+
+def create_filename(*, prefix=None, suffix=None, include_date=True):
+    filename = secrets.token_hex(nbytes=5)
+
+    if prefix is not None:
+        filename = f'{prefix}_{filename}'
+
+    if suffix is not None:
+        filename = f'{filename}_{suffix}'
+
+    if include_date:
+        current_date = datetime.datetime.now(
+            tz=pytz.UTC).date().strftime('%Y-%m-%d %H:%M')
+        date_string = str(current_date).replace(' ', '-').replace(':', '_')
+        filename = f'{filename}_{date_string}'
+    return filename
+
+
+async def write_json_file(filename, data):
+    with open(MEDIA_PATH / filename, mode='w', encoding='utf-8') as f:
+        json.dump(data, f)
+
+
+def create_argument_parser():
+    """Create an new argument parser"""
+    parser = argparse.ArgumentParser(prog='Google reviews')
+    parser.add_argument(
+        'name',
+        type=str,
+        help='The name of the review parser to user',
+        choices=['place', 'places']
+    )
+    parser.add_argument('url', type=str, help='The url to visit')
+    parser.add_argument(
+        '-w',
+        '--webhook',
+        type=str,
+        help='Webhook to send data'
+    )
+    parser.add_argument(
+        '-c',
+        '--collect-reviews',
+        type=bool,
+        default=True,
+        help='Determines if the crawler should collect the reviews for the given business'
+    )
+    return parser
+
+
+def clean_raw_information(text):
+    t1 = text.replace('Revendiquer cet établissement', '')
+    text = t1.replace('Envoyer vers votre téléphone', '')
+    return text
