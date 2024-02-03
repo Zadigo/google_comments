@@ -1,7 +1,7 @@
 import datetime
 import pathlib
 import time
-from urllib.parse import quote, quote_plus, urlencode, urlparse
+from urllib.parse import quote_plus, urlencode, urlparse, urlunparse
 
 import pandas
 import pytz
@@ -222,21 +222,86 @@ class BusinessSearch(GoogleSearch):
 
 class LinkedIn(GoogleSearch):
     def __init__(self, output_folder=None):
-        base_columns = ['profile']
+        base_columns = ['profiles', 'firstname', 'lastname']
         self.collected_search = pandas.DataFrame([], columns=base_columns)
         super().__init__(output_folder=output_folder)
 
     def current_page_actions(self, search, urls, elements):
-        pass
+        df = pandas.concat(
+            [self.collected_search, pandas.DataFrame({'profiles': urls})]
+        )
+
+        def clean_url(url):
+            """Remove the query part of 
+            the current url"""
+            if url is None:
+                return None
+            instance = urlparse(str(url))
+            return urlunparse((
+                instance.scheme,
+                instance.netloc,
+                instance.path,
+                None,
+                None,
+                None
+            ))
+
+        def is_linkedin_profile(url):
+            if url is None:
+                return False
+
+            if str(url).startswith('/'):
+                return False
+
+            if 'linkedin.com/in/' in str(url):
+                return True
+
+            return False
+
+        df['profiles'] = df['profiles'].map(clean_url)
+        df['is_linkedin'] = df['profiles'].map(is_linkedin_profile)
+
+        profiles_df = df.query('is_linkedin == True')
+        profiles_df = profiles_df.sort_values(
+            'profiles').drop_duplicates()
+
+        for item in profiles_df.itertuples(name='Profile'):
+            instance = urlparse(item.profiles)
+            result = instance.path.split('/')
+
+            user_information = result[-1].split('-')
+            try:
+                if len(user_information) == 1:
+                    # ex./in/cecilejolly
+                    firstname = user_information[0]
+                    lastname = None
+                elif len(user_information) == 2:
+                    # ex./in/clervie-fournier
+                    firstname, lastname = user_information
+                elif len(user_information) == 3:
+                    # ex. /in/filipa-teixeira-6397b6213
+                    firstname, lastname = user_information[:-1]
+            except:
+                firstname = ' '.join(user_information)
+                lastname = None
+
+            if firstname is not None:
+                profiles_df.loc[item.Index, 'firstname'] = firstname.title()
+
+            if lastname is not None:
+                profiles_df.loc[item.Index, 'lastname'] = lastname.title()
+
+        profiles_df['date'] = datetime.datetime.now(tz=pytz.UTC)
+        profiles_df.to_csv('profiles.csv', index=False)
 
 
-s = GoogleSearch()
+s = LinkedIn()
 # s.get_business_profile('Centre Commercial NICETOILE')
 # s.get_business_profile('SAD Marketing')
 # s.get_business_profile('intimissimi')
 # s.get_business_profile('rouge gorge')
 # s.iterate_urls(filename='searches.csv')
 s.start_spider(
-    'site:linkedin.com/in bershka & marketing',
+    'site:linkedin.com/in kedge',
     use_input=True
 )
