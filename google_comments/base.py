@@ -1,35 +1,13 @@
-import argparse
-import asyncio
-import csv
 import datetime
-import json
-import os
-import pathlib
-import random
-import re
-import secrets
-import string
-import sys
 import time
-from collections import Counter, defaultdict
+from collections import Counter
 
-import pandas
 import pytz
-from requests.auth import HTTPBasicAuth
-from requests.models import Request
-from requests.sessions import Session
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 
-from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
-                             create_argument_parser, create_filename,
-                             get_selenium_browser_instance, get_soup, logger,
-                             models, simple_clean_text, text_parser)
-from google_comments.models import GoogleBusiness, Review
-from google_comments.utilities import encoders, file_helpers
-from google_comments.utilities.file_helpers import write_csv_file
-from google_comments.utilities.text import slugify
+from google_comments import MEDIA_PATH, constants, logger
+
+
+FEED_SCROLL_ATTEMPTS = 30
 
 
 class SpiderMixin:
@@ -77,7 +55,7 @@ class SpiderMixin:
         """Custom actions to be run before selenium
         starts executing actions on the current page"""
 
-    def current_page_actions(self):
+    def current_page_actions(self, **kwargs):
         """Custom additional actions to run on the
         current page"""
 

@@ -52,6 +52,7 @@ class GoogleMapsMixin(SpiderMixin):
         self.websocket = None
         self.seen_urls_outputted = False
         self.filename = None
+        self.is_loop = False
         super().__init__(output_folder=output_folder)
         logger.info('Starting spider')
 

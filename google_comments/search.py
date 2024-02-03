@@ -1,28 +1,27 @@
 import datetime
-import pytz
 import pathlib
 import time
-from urllib.parse import quote_plus, urlencode, urlparse, quote
+from urllib.parse import quote, quote_plus, urlencode, urlparse
 
 import pandas
+import pytz
 from bs4 import BeautifulSoup
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 from google_comments import get_selenium_browser_instance, logger
 from google_comments.base import SpiderMixin
 
 
 class GoogleSearch(SpiderMixin):
-    # collected_search = []
-
     def __init__(self, output_folder=None):
         self.driver = get_selenium_browser_instance()
-        base_columns = [
-            'search', 'url', 'gmaps_url',
-            'address', 'telephone'
-        ]
-        self.collected_search = pandas.DataFrame([], columns=base_columns)
+        self.is_loop = False
         super().__init__(output_folder=output_folder)
+
+    def current_page_actions(self, search, urls, elements):
+        pass
 
     def click_consent(self):
         """Function that clicks on the cookie 
@@ -44,7 +43,10 @@ class GoogleSearch(SpiderMixin):
     def before_launch(self):
         pass
 
-    def iterate_urls(self, filename=None, searches=[]):
+    def iterate_urls(self, *, use_input=False, filename=None, searches=[]):
+        self.is_running = True
+        self.is_loop = True
+
         if filename is not None:
             path = pathlib.Path(filename)
             with open(path, mode='r', encoding='utf-8') as f:
@@ -86,7 +88,7 @@ class GoogleSearch(SpiderMixin):
                 term = df.loc[total_iterations, 'terms']
                 logger.info(f'Execution started for {term}')
 
-                self.start_spider(quote(term), is_loop=True)
+                self.start_spider(term, use_input=use_input)
                 df.loc[total_iterations, 'completed'] = True
 
                 next_execution_date = next_execution_date + interval
@@ -100,17 +102,63 @@ class GoogleSearch(SpiderMixin):
                 df.to_csv('searches.csv', index=False)
             time.sleep(2)
 
-    def start_spider(self, search, is_loop=False):
+    def start_spider(self, search, use_input=False):
+        """This function will start the spider but should be called
+        directly. It should be calle within specific function that
+        states the logic to parse the urls that were actually gathered
+        on the Google Search page"""
         self.before_launch()
 
-        search = quote_plus(search)
-        query = urlencode({'q': search})
-        self.driver.get(f'https://www.google.com/search?{query}')
+        url = None
+        if use_input:
+            url = f'https://www.google.com'
+        else:
+            search = quote_plus(search)
+            query = urlencode({'q': search})
+            url = f'https://www.google.com/search?{query}'
+
+        self.driver.get(url)
         self.click_consent()
+
+        if use_input:
+            textarea = self.driver.execute_script(
+                """return document.querySelector('textarea[name="q"]')"""
+            )
+            actions = ActionChains(self.driver)
+            actions.move_to_element(textarea)
+            actions.click()
+            actions.send_keys_to_element(textarea, search, Keys.ENTER)
+            actions.perform()
+            time.sleep(5)
 
         element = self.driver.find_element(By.TAG_NAME, 'body')
         html = element.get_attribute('innerHTML')
 
+        soup = BeautifulSoup(html, 'html.parser')
+        search_section = soup.find('div', {'id': 'search'})
+        # [element.extract() for element in search_section.find_all('script')]
+        search_section.script.decompose()
+        elements = search_section.find_all('a')
+
+        urls = [element.attrs.get('href') for element in elements]
+        self.current_page_actions(search, urls, elements)
+
+        if not self.is_loop:
+            self.driver.quit()
+
+
+class BusinessSearch(GoogleSearch):
+    def __init__(self, output_folder=None):
+        base_columns = [
+            'search', 'url', 'gmaps_url',
+            'address', 'telephone'
+        ]
+        self.collected_search = pandas.DataFrame([], columns=base_columns)
+        super().__init__(output_folder=output_folder)
+
+    def current_page_actions(self, search, urls, elements):
+        """Returns information about a given business on
+        the Google Search home page"""
         contact_infos = self.driver.execute_script(
             """
             function evaluateXpath(xpath) {
@@ -134,13 +182,6 @@ class GoogleSearch(SpiderMixin):
             """
         )
 
-        soup = BeautifulSoup(html, 'html.parser')
-        search_section = soup.find('div', {'id': 'search'})
-        # [element.extract() for element in search_section.find_all('script')]
-        search_section.script.decompose()
-        # elements = search_section.find_all('div', {'class': 'TzHB6b'})
-        elements = search_section.find_all('a')
-
         gmaps_url, business_data = contact_infos
         for element in elements:
             business_data = business_data | {
@@ -149,22 +190,6 @@ class GoogleSearch(SpiderMixin):
                 self.collected_search,
                 pandas.DataFrame([business_data])
             ])
-
-        # for element in elements:
-        #     h3_tag = element.find('h3')
-        #     if h3_tag is not None:
-        #         title = h3_tag.text
-        #         business_data['title'] = title
-
-        #         link_tag = element.find('a', {'jsname': 'UWckNb'})
-        #         if link_tag is not None:
-        #             link = link_tag.attrs.get('href')
-        #             business_data['url'] = link
-
-        #         self.collected_search = pandas.concat([
-        #             self.collected_search,
-        #             pandas.DataFrame([business_data])
-        #         ])
 
         df = self.collected_search.sort_values('url').drop_duplicates()
 
@@ -186,19 +211,32 @@ class GoogleSearch(SpiderMixin):
                 """return window.location.href"""
             )
 
-        if is_loop:
+        if self.is_loop:
             pass
         else:
             df[['url', 'gmaps_url', 'address', 'telephone']].to_csv(
                 'business.csv',
                 index=False
             )
-            self.driver.quit()
+
+
+class LinkedIn(GoogleSearch):
+    def __init__(self, output_folder=None):
+        base_columns = ['profile']
+        self.collected_search = pandas.DataFrame([], columns=base_columns)
+        super().__init__(output_folder=output_folder)
+
+    def current_page_actions(self, search, urls, elements):
+        pass
 
 
 s = GoogleSearch()
-# s.start_spider('Centre Commercial NICETOILE')
-# s.start_spider('SAD Marketing')
-# s.start_spider('intimissimi')
-# s.start_spider('rouge gorge')
-s.iterate_urls(filename='searches.csv')
+# s.get_business_profile('Centre Commercial NICETOILE')
+# s.get_business_profile('SAD Marketing')
+# s.get_business_profile('intimissimi')
+# s.get_business_profile('rouge gorge')
+# s.iterate_urls(filename='searches.csv')
+s.start_spider(
+    'site:linkedin.com/in bershka & marketing',
+    use_input=True
+)
