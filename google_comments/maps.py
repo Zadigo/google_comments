@@ -32,7 +32,7 @@ from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
                              get_selenium_browser_instance, get_soup, logger,
                              models, simple_clean_text, text_parser)
 
-COMMENTS_SCROLL_ATTEMPTS = 50
+COMMENTS_SCROLL_ATTEMPTS = 500
 
 COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
 
@@ -600,7 +600,7 @@ class GooglePlace(GoogleMapsMixin):
                 )
                 if result:
                     # DEBUG: Check the counter
-                    logger.debug(f'{dict(self.comments_scroll_counter)}')
+                    # logger.debug(f'{dict(self.comments_scroll_counter)}')
                     self.comments_scroll_counter.clear()
                     break
 
