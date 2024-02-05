@@ -1,9 +1,6 @@
 import argparse
-import asyncio
 import csv
-import datetime
 import json
-import os
 import pathlib
 import random
 import re
@@ -11,24 +8,20 @@ import secrets
 import string
 import sys
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 import pandas
-import pytz
 from google_comments.base import SpiderMixin
 from google_comments.models import GoogleBusiness, Review
-from google_comments.utilities import encoders, file_helpers
+from google_comments.utilities import file_helpers
 from google_comments.utilities.file_helpers import write_csv_file
 from google_comments.utilities.text import slugify
-from requests.auth import HTTPBasicAuth
-from requests.models import Request
-from requests.sessions import Session
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
-                             create_argument_parser, create_filename,
+                             create_filename,
                              get_selenium_browser_instance, get_soup, logger,
                              models, simple_clean_text, text_parser)
 
@@ -52,6 +45,7 @@ class GoogleMapsMixin(SpiderMixin):
         self.websocket = None
         self.seen_urls_outputted = False
         self.filename = None
+        self.is_loop = False
         super().__init__(output_folder=output_folder)
         logger.info('Starting spider')
 
