@@ -894,7 +894,7 @@ class SearchLinks(SpiderMixin):
                 logger.warning(f'Incorrect url for search: "{item.data}"')
 
             self.create_file()
-            time.sleep(random.randrange(4, 8))
+            time.sleep(random.randrange(15, 40))
             self.current_iteration = self.current_iteration + 1
             logger.info(
                 f"Completed {self.current_iteration} "
