@@ -847,7 +847,37 @@ class SearchLinks(SpiderMixin):
             """
             url = self.driver.execute_script(current_page_url_script)
             if '/maps/place/' in url:
-                self.URLS.append({'search': item.data, 'url': url})
+                data = {
+                    'search': item.data,
+                    'url': url,
+                    'name': None,
+                    'rating': None,
+                    'number_of_reviews': None,
+                    'latitude': None,
+                    'longitude': None,
+                    'coordinates': None
+                }
+
+                try:
+                    # While we are on the page, if we actually are on a /maps/place/
+                    # implement simple additional pieces of the business eventually
+                    # could be used later on
+                    business_information = self.driver.execute_script(constants.BUSINESS_INFORMATION_SCRIPT)
+                except:
+                    pass
+                else:
+                    model = GoogleBusiness(**business_information)
+                    model.get_gps_coordinates_from_url()
+                    data.update({
+                        'name': model.name,
+                        'rating': model.rating,
+                        'number_of_reviews': None,
+                        'latitude': model.latitude,
+                        'longitude': model.longitude,
+                        'coordinates': convert_coordinates(model.latitude, model.longitude)
+                    })
+
+                self.URLS.append(data)
                 self.current_page_actions()
                 logger.info(f"Got url number {item.Index + 1}: \"{url}\"")
             else:
