@@ -11,6 +11,7 @@ import time
 from collections import defaultdict
 
 import pandas
+from google_comments.utilities.calculation import convert_coordinates
 from google_comments.base import SpiderMixin
 from google_comments.models import GoogleBusiness, Review
 from google_comments.utilities import file_helpers
@@ -31,7 +32,7 @@ COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
 
 FEED_SCROLL_ATTEMPTS = 30
 
-COMMENTS_SCROLL_WAIT_TIME = 5
+COMMENTS_SCROLL_WAIT_TIME = 10
 
 
 class GoogleMapsMixin(SpiderMixin):
