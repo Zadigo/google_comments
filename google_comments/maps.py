@@ -881,7 +881,16 @@ class SearchLinks(SpiderMixin):
                 self.current_page_actions()
                 logger.info(f"Got url number {item.Index + 1}: \"{url}\"")
             else:
-                self.URLS.append({'search': item.data, 'url': None})
+                self.URLS.append({
+                    'search': item.data, 
+                    'url': None,
+                    'name': None,
+                    'rating': None,
+                    'number_of_reviews': None,
+                    'latitude': None,
+                    'longitude': None,
+                    'coordinates': None
+                })
                 logger.warning(f'Incorrect url for search: "{item.data}"')
 
             self.create_file()
