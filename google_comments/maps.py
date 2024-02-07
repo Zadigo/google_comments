@@ -1,5 +1,6 @@
 import argparse
 import csv
+import sys
 import json
 import pathlib
 import random
@@ -487,14 +488,14 @@ class GooglePlace(GoogleMapsMixin):
     eventually the reviews that were left by the users. A Google Place
     url is required for this automater to function `/maps/place/`"""
 
-    def start_spider(self, url, refresh=False, is_loop=False, maximize_window=True):
+    def start_spider(self, url, id_or_reference=None, refresh=False, is_loop=False, maximize_window=True):
         self.is_running = True
 
         if maximize_window:
             self.driver.maximize_window()
 
         # if not self.keep_unique_file and self.filename is not None:
-        self.filename = filename = create_filename()
+        self.filename = filename = create_filename(suffix=id_or_reference)
         self.driver.get(url)
 
         # 1. Click on the consent form - This appears
@@ -663,7 +664,7 @@ class GooglePlace(GoogleMapsMixin):
             self.collected_businesses = []
             return True
 
-    def iterate_urls(self):
+    def iterate_urls(self, urls=[]):
         """From a file called `media/google_place_urls.csv` containing a 
         set of Google url places, iterate and extract the comments or the
         business information for each Google Place. This calls `start_spider` 
@@ -752,6 +753,7 @@ class SearchLinks(SpiderMixin):
         self.current_iteration = 0
         self.headless = False
         self.output_filename = create_filename(prefix='search_urls')
+        self.search_data_path = None
         super().__init__(output_folder=output_folder)
 
         screenshots_folder = MEDIA_PATH / 'screenshots'
@@ -775,7 +777,7 @@ class SearchLinks(SpiderMixin):
         self.click_consent()
         self.driver.maximize_window()
 
-        search_data_path = MEDIA_PATH.joinpath('search_data.csv')
+        self.search_data_path = search_data_path = MEDIA_PATH.joinpath('search_data.csv')
         df = pandas.read_csv(search_data_path, encoding='utf-8')
         if 'data' not in df.columns:
             raise ValueError("Your file should have a column 'data'")
@@ -785,7 +787,7 @@ class SearchLinks(SpiderMixin):
         else:
             return df[df['completed'] == False]
 
-    def start_spider(self):
+    def start_spider(self, take_screenshots=False):
         df = self.before_launch()
 
         for item in df.itertuples(name='Search'):
@@ -819,7 +821,7 @@ class SearchLinks(SpiderMixin):
             # an error page
             if self.is_feed_page:
                 self.confusion_pages.append(self.driver.current_url)
-                filename = f'failed_{self.output_filename}.csv'
+                filename = f'failed_{self.output_filename}'
                 write_csv_file(filename, self.confusion_pages)
 
                 filename = create_filename(prefix=slugify(item.data))
@@ -859,7 +861,9 @@ class SearchLinks(SpiderMixin):
                     'number_of_reviews': None,
                     'latitude': None,
                     'longitude': None,
-                    'coordinates': None
+                    'coordinates': None,
+                    'business_type': None,
+                    'permanently_closed': False
                 }
 
                 try:
@@ -878,7 +882,9 @@ class SearchLinks(SpiderMixin):
                         'number_of_reviews': None,
                         'latitude': model.latitude,
                         'longitude': model.longitude,
-                        'coordinates': convert_coordinates(model.latitude, model.longitude)
+                        'coordinates': convert_coordinates(model.latitude, model.longitude),
+                        'business_type': model.business_type,
+                        'permanently_closed': model.permanently_closed
                     })
 
                 self.URLS.append(data)
@@ -1082,11 +1088,6 @@ if __name__ == '__main__':
         choices=['place', 'places', 'searchlinks', 'searchbusinesses']
     )
     parser.add_argument(
-        'url',
-        type=str,
-        help='The url to visit'
-    )
-    parser.add_argument(
         '-f',
         '--folder',
         type=str
@@ -1154,5 +1155,5 @@ if __name__ == '__main__':
             instance.after_fail(exception=e)
             logger.critical(e)
         except KeyboardInterrupt:
-            instance.after_fail(exception=e)
+            instance.after_fail()
             logger.info('Program stopped')
