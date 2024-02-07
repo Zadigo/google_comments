@@ -36,6 +36,9 @@ BUSINESS_INFORMATION_SCRIPT = """
         let websiteElement = resolveXpath('//a[contains(@aria-label, "Site Web:")]')
         let website = websiteElement && websiteElement.href
 
+        let businessType = getText(resolveXpath('//button[contains(@jsaction, "\.category")]'))
+        let permanentlyClosed = resolveXpath('//*[contains(text(), "Définitivement fermé")]')
+
         return {
             name,
             url: window.location.href,
@@ -44,6 +47,8 @@ BUSINESS_INFORMATION_SCRIPT = """
             number_of_reviews: numberOfReviews,
             telephone,
             website,
+            business_type: businessType,
+            permanently_closed: permanentlyClosed !== null,
             additional_information: evaluateXpath('//div[contains(@aria-label, "Informations")][@role="region"][contains(@class, "m6QErb")]')
         }
     }
