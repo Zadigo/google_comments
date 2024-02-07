@@ -47,6 +47,3 @@ class ConvertCoodinates:
     
 
 convert_coordinates = ConvertCoodinates()
-
-
-print(convert_coordinates(48.083300, -1.680232))
