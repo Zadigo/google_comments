@@ -826,8 +826,11 @@ class SearchLinks(SpiderMixin):
                 filepath = f'screenshots/{filename}.png'
 
                 logger.warning(f'Is a feed page: "{item.data}"')
-                self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
-                logger.info(f'Created screenshot @ "{filepath}"')
+                
+                if take_screenshots:
+                    self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
+                    logger.info(f'Created screenshot @ "{filepath}"')
+                
                 self.current_iteration = self.current_iteration + 1
                 time.sleep(random.randrange(4, 9))
                 continue
