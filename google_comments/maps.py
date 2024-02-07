@@ -783,7 +783,11 @@ class SearchLinks(SpiderMixin):
         df = pandas.read_csv(search_data_path, encoding='utf-8')
         if 'data' not in df.columns:
             raise ValueError("Your file should have a column 'data'")
-        return df
+        if not 'completed' in df.columns:
+            df['completed'] = False
+            return df
+        else:
+            return df[df['completed'] == False]
 
     def start_spider(self):
         df = self.before_launch()
