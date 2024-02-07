@@ -898,6 +898,10 @@ class SearchLinks(SpiderMixin):
                 logger.warning(f'Incorrect url for search: "{item.data}"')
 
             self.create_file()
+
+            df.loc[item.Index, 'completed'] = True
+            df.to_csv(self.search_data_path, index=False)
+
             time.sleep(random.randrange(15, 40))
             self.current_iteration = self.current_iteration + 1
             logger.info(
