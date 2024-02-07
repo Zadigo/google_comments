@@ -66,6 +66,8 @@ class GoogleBusiness(BaseModel):
     longitude: int = None
     number_of_reviews: int = None
     date: str = field(default=datetime.datetime.now(tz=pytz.UTC))
+    business_type: str = None
+    permanently_closed: bool = False
     additional_information: str = None
     telephone: str = None
     website: str = None
