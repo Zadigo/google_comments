@@ -668,34 +668,30 @@ class GooglePlace(GoogleMapsMixin):
         set of Google url places, iterate and extract the comments or the
         business information for each Google Place. This calls `start_spider` 
         in a loop passing the current url"""
-        try:
+        file_path = MEDIA_PATH / 'google_place_urls.csv'
+        if file_path.exists():
             df = pandas.read_csv(
                 MEDIA_PATH / 'google_place_urls.csv',
                 encoding='utf-8'
             )
-        except FileNotFoundError:
-            logger.error(
-                f"{self.__class__.__name__} expects a "
-                "google_place_urls csv file"
-            )
-            return False
         else:
-            logger.info(f"Loaded {df['url'].count()} urls")
+            df = pandas.DataFrame({'url': urls})
 
-            df['completed'] = False
+        logger.info(f"Loaded {df['url'].count()} urls")
+        df['completed'] = False
 
-            completed_urls_path = MEDIA_PATH / 'completed_urls.csv'
-            if not completed_urls_path.exists():
-                completed_urls_df = pandas.DataFrame(data={'url': []})
-                completed_urls_df.to_csv(
-                    completed_urls_path,
-                    encoding='utf-8',
-                    index=False
-                )
-            else:
-                completed_urls_df = pandas.read_csv(
-                    MEDIA_PATH / 'completed_urls.csv'
-                )
+        completed_urls_path = MEDIA_PATH / 'completed_urls.csv'
+        if not completed_urls_path.exists():
+            completed_urls_df = pandas.DataFrame(data={'url': []})
+            completed_urls_df.to_csv(
+                completed_urls_path,
+                encoding='utf-8',
+                index=False
+            )
+        else:
+            completed_urls_df = pandas.read_csv(
+                MEDIA_PATH / 'completed_urls.csv'
+            )
 
         if 'url' not in list(df.columns):
             raise ValueError("Your file should contain an 'url' column")
