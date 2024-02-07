@@ -1064,6 +1064,10 @@ class SearchBusinesses(SearchLinks):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Google reviews')
+
+    arguments = sys.argv[1:]
+    
+    cmd = arguments[0]
     parser.add_argument(
         'name',
         type=str,
@@ -1096,10 +1100,17 @@ if __name__ == '__main__':
         '--comment-scroll-attempts',
         type=int
     )
-    parser.add_argument(
-        '-n',
-        type=bool
-    )
+    
+    if cmd != 'searchlinks':
+        parser.add_argument(
+            'url',
+            type=str,
+            help='The url to visit'
+        )
+        parser.add_argument(
+            '-n',
+            type=bool
+        )
     namespace = parser.parse_args()
 
     if namespace.comments_scroll_time is not None:
