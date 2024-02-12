@@ -2,6 +2,7 @@ import argparse
 import csv
 import dataclasses
 import datetime
+import json
 import logging
 import pathlib
 import re
@@ -188,7 +189,8 @@ def create_filename(*, prefix=None, suffix=None, include_date=True):
 
     if include_date:
         current_date = datetime.datetime.now(
-            tz=pytz.UTC).date().strftime('%Y-%m-%d %H:%M')
+            tz=pytz.UTC
+        ).date().strftime('%Y-%m-%d %H:%M')
         date_string = str(current_date).replace(' ', '-').replace(':', '_')
         filename = f'{filename}_{date_string}'
     return filename

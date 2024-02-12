@@ -29,8 +29,11 @@ class ConvertCoodinates:
         return None, None
 
     def get_minutes(self, value):
-        return round(float(value) * 60, 7)
-    
+        try:
+            return round(float(value) * 60, 7)
+        except:
+            return 0
+        
     def calculate_dmm(self, value):
         degree, remainder = self.parse_value(value)
         minutes = self.get_minutes(f"0.{remainder}")
@@ -42,11 +45,12 @@ class ConvertCoodinates:
 
         result_seconds = re.search(r'\.(\d+)$', str(minutes))
         minutes_remainder = f'0.{result_seconds.group(1)}'
-        seconds = round(float(minutes_remainder) * 60, 7)
-        return f"""{degree}°{int(minutes)}'{int(seconds)}\""""
+        try:
+            seconds = round(float(minutes_remainder) * 60, 7)
+        except:
+            return f"""0°0'0"""
+        else:
+            return f"""{degree}°{int(minutes)}'{int(seconds)}\""""
     
 
 convert_coordinates = ConvertCoodinates()
-
-
-print(convert_coordinates(48.083300, -1.680232))

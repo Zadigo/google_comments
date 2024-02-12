@@ -1,9 +1,7 @@
 import argparse
-import asyncio
 import csv
-import datetime
+import sys
 import json
-import os
 import pathlib
 import random
 import re
@@ -11,34 +9,31 @@ import secrets
 import string
 import sys
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 import pandas
-import pytz
+from google_comments.utilities.calculation import convert_coordinates
 from google_comments.base import SpiderMixin
 from google_comments.models import GoogleBusiness, Review
-from google_comments.utilities import encoders, file_helpers
+from google_comments.utilities import file_helpers
 from google_comments.utilities.file_helpers import write_csv_file
 from google_comments.utilities.text import slugify
-from requests.auth import HTTPBasicAuth
-from requests.models import Request
-from requests.sessions import Session
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
-                             create_argument_parser, create_filename,
+                             create_filename,
                              get_selenium_browser_instance, get_soup, logger,
                              models, simple_clean_text, text_parser)
 
-COMMENTS_SCROLL_ATTEMPTS = 50
+COMMENTS_SCROLL_ATTEMPTS = 500
 
 COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
 
 FEED_SCROLL_ATTEMPTS = 30
 
-COMMENTS_SCROLL_WAIT_TIME = 5
+COMMENTS_SCROLL_WAIT_TIME = 10
 
 
 class GoogleMapsMixin(SpiderMixin):
@@ -52,6 +47,7 @@ class GoogleMapsMixin(SpiderMixin):
         self.websocket = None
         self.seen_urls_outputted = False
         self.filename = None
+        self.is_loop = False
         super().__init__(output_folder=output_folder)
         logger.info('Starting spider')
 
@@ -492,14 +488,14 @@ class GooglePlace(GoogleMapsMixin):
     eventually the reviews that were left by the users. A Google Place
     url is required for this automater to function `/maps/place/`"""
 
-    def start_spider(self, url, refresh=False, is_loop=False, maximize_window=True):
+    def start_spider(self, url, id_or_reference=None, refresh=False, is_loop=False, maximize_window=True):
         self.is_running = True
 
         if maximize_window:
             self.driver.maximize_window()
 
         # if not self.keep_unique_file and self.filename is not None:
-        self.filename = filename = create_filename()
+        self.filename = filename = create_filename(suffix=id_or_reference)
         self.driver.get(url)
 
         # 1. Click on the consent form - This appears
@@ -600,7 +596,7 @@ class GooglePlace(GoogleMapsMixin):
                 )
                 if result:
                     # DEBUG: Check the counter
-                    logger.debug(f'{dict(self.comments_scroll_counter)}')
+                    # logger.debug(f'{dict(self.comments_scroll_counter)}')
                     self.comments_scroll_counter.clear()
                     break
 
@@ -668,39 +664,35 @@ class GooglePlace(GoogleMapsMixin):
             self.collected_businesses = []
             return True
 
-    def iterate_urls(self):
+    def iterate_urls(self, urls=[]):
         """From a file called `media/google_place_urls.csv` containing a 
         set of Google url places, iterate and extract the comments or the
         business information for each Google Place. This calls `start_spider` 
         in a loop passing the current url"""
-        try:
+        file_path = MEDIA_PATH / 'google_place_urls.csv'
+        if file_path.exists():
             df = pandas.read_csv(
                 MEDIA_PATH / 'google_place_urls.csv',
                 encoding='utf-8'
             )
-        except FileNotFoundError:
-            logger.error(
-                f"{self.__class__.__name__} expects a "
-                "google_place_urls csv file"
-            )
-            return False
         else:
-            logger.info(f"Loaded {df['url'].count()} urls")
+            df = pandas.DataFrame({'url': urls})
 
-            df['completed'] = False
+        logger.info(f"Loaded {df['url'].count()} urls")
+        df['completed'] = False
 
-            completed_urls_path = MEDIA_PATH / 'completed_urls.csv'
-            if not completed_urls_path.exists():
-                completed_urls_df = pandas.DataFrame(data={'url': []})
-                completed_urls_df.to_csv(
-                    completed_urls_path,
-                    encoding='utf-8',
-                    index=False
-                )
-            else:
-                completed_urls_df = pandas.read_csv(
-                    MEDIA_PATH / 'completed_urls.csv'
-                )
+        completed_urls_path = MEDIA_PATH / 'completed_urls.csv'
+        if not completed_urls_path.exists():
+            completed_urls_df = pandas.DataFrame(data={'url': []})
+            completed_urls_df.to_csv(
+                completed_urls_path,
+                encoding='utf-8',
+                index=False
+            )
+        else:
+            completed_urls_df = pandas.read_csv(
+                MEDIA_PATH / 'completed_urls.csv'
+            )
 
         if 'url' not in list(df.columns):
             raise ValueError("Your file should contain an 'url' column")
@@ -755,12 +747,14 @@ class SearchLinks(SpiderMixin):
     confusion_pages = []
     base_url = 'https://www.google.com/maps/@50.6476347,3.1369403,14z?entry=ttu'
 
-    def __init__(self, output_folder=None):
+    def __init__(self, output_folder=None, initial_data_file=None):
         self.driver = None
         self.data_file = None
         self.current_iteration = 0
         self.headless = False
+        self.initial_data_file = initial_data_file or 'search_data.csv'
         self.output_filename = create_filename(prefix='search_urls')
+        self.search_data_path = None
         super().__init__(output_folder=output_folder)
 
         screenshots_folder = MEDIA_PATH / 'screenshots'
@@ -784,13 +778,17 @@ class SearchLinks(SpiderMixin):
         self.click_consent()
         self.driver.maximize_window()
 
-        search_data_path = MEDIA_PATH.joinpath('search_data.csv')
+        self.search_data_path = search_data_path = MEDIA_PATH.joinpath(self.initial_data_file)
         df = pandas.read_csv(search_data_path, encoding='utf-8')
         if 'data' not in df.columns:
             raise ValueError("Your file should have a column 'data'")
-        return df
+        if not 'completed' in df.columns:
+            df['completed'] = False
+            return df
+        else:
+            return df[df['completed'] == False]
 
-    def start_spider(self):
+    def start_spider(self, take_screenshots=False):
         df = self.before_launch()
 
         for item in df.itertuples(name='Search'):
@@ -823,16 +821,19 @@ class SearchLinks(SpiderMixin):
             # scroll the feed or indicate to be
             # an error page
             if self.is_feed_page:
-                self.confusion_pages.append(self.driver.current_url)
-                filename = f'failed_{self.output_filename}.csv'
+                self.confusion_pages.append([item.data, self.driver.current_url])
+                filename = f'failed_{self.output_filename}'
                 write_csv_file(filename, self.confusion_pages)
 
                 filename = create_filename(prefix=slugify(item.data))
                 filepath = f'screenshots/{filename}.png'
 
                 logger.warning(f'Is a feed page: "{item.data}"')
-                self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
-                logger.info(f'Created screenshot @ "{filepath}"')
+                
+                if take_screenshots:
+                    self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
+                    logger.info(f'Created screenshot @ "{filepath}"')
+                
                 self.current_iteration = self.current_iteration + 1
                 time.sleep(random.randrange(4, 9))
                 continue
@@ -853,15 +854,62 @@ class SearchLinks(SpiderMixin):
             """
             url = self.driver.execute_script(current_page_url_script)
             if '/maps/place/' in url:
-                self.URLS.append({'search': item.data, 'url': url})
+                data = {
+                    'search': item.data,
+                    'url': url,
+                    'name': None,
+                    'rating': None,
+                    'number_of_reviews': None,
+                    'latitude': None,
+                    'longitude': None,
+                    'coordinates': None,
+                    'business_type': None,
+                    'permanently_closed': False
+                }
+
+                try:
+                    # While we are on the page, if we actually are on a /maps/place/
+                    # implement simple additional pieces of the business eventually
+                    # could be used later on
+                    business_information = self.driver.execute_script(constants.BUSINESS_INFORMATION_SCRIPT)
+                except:
+                    pass
+                else:
+                    model = GoogleBusiness(**business_information)
+                    model.get_gps_coordinates_from_url()
+                    data.update({
+                        'name': model.name,
+                        'rating': model.rating,
+                        'number_of_reviews': None,
+                        'latitude': model.latitude,
+                        'longitude': model.longitude,
+                        'coordinates': convert_coordinates(model.latitude, model.longitude),
+                        'business_type': model.business_type,
+                        'permanently_closed': model.permanently_closed
+                    })
+
+                self.URLS.append(data)
                 self.current_page_actions()
                 logger.info(f"Got url number {item.Index + 1}: \"{url}\"")
             else:
-                self.URLS.append({'search': item.data, 'url': None})
+                self.URLS.append({
+                    'search': item.data, 
+                    'url': None,
+                    'name': None,
+                    'rating': None,
+                    'number_of_reviews': None,
+                    'latitude': None,
+                    'longitude': None,
+                    'coordinates': None
+                })
                 logger.warning(f'Incorrect url for search: "{item.data}"')
 
             self.create_file()
-            time.sleep(random.randrange(4, 8))
+
+            df.loc[item.Index, 'completed'] = True
+            df.to_csv(self.search_data_path, index=False)
+
+            time.sleep(random.randrange(15, 40))
             self.current_iteration = self.current_iteration + 1
             logger.info(
                 f"Completed {self.current_iteration} "
@@ -1030,16 +1078,15 @@ class SearchBusinesses(SearchLinks):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Google reviews')
+
+    arguments = sys.argv[1:]
+    
+    cmd = arguments[0]
     parser.add_argument(
         'name',
         type=str,
         help='The name of the review parser to use',
         choices=['place', 'places', 'searchlinks', 'searchbusinesses']
-    )
-    parser.add_argument(
-        'url',
-        type=str,
-        help='The url to visit'
     )
     parser.add_argument(
         '-f',
@@ -1062,10 +1109,26 @@ if __name__ == '__main__':
         '--comment-scroll-attempts',
         type=int
     )
-    parser.add_argument(
-        '-n',
-        type=bool
-    )
+    
+    if cmd != 'searchlinks':
+        parser.add_argument(
+            'url',
+            type=str,
+            help='The url to visit'
+        )
+        parser.add_argument(
+            '-n',
+            type=bool
+        )
+
+    if cmd == 'searchlinks':
+        parser.add_argument(
+            '-i',
+            '--initial-data-file',
+            type=str,
+            help="Use another data file than the default 'search_data.csv'"
+        )
+
     namespace = parser.parse_args()
 
     if namespace.comments_scroll_time is not None:
@@ -1094,6 +1157,19 @@ if __name__ == '__main__':
             except KeyboardInterrupt:
                 instance.after_fail()
                 logger.info('Program stopped')
+    elif namespace.name == 'searchlinks':
+        instance = klass(
+            output_folder=namespace.folder,
+            initial_data_file=namespace.initial_data_file
+        )
+        try:
+            instance.start_spider()
+        except Exception as e:
+            instance.after_fail(exception=e)
+            logger.critical(e)
+        except KeyboardInterrupt:
+            instance.after_fail()
+            logger.info('Program stopped')
     else:
         instance = klass(output_folder=namespace.folder)
         try:
@@ -1102,5 +1178,5 @@ if __name__ == '__main__':
             instance.after_fail(exception=e)
             logger.critical(e)
         except KeyboardInterrupt:
-            instance.after_fail(exception=e)
+            instance.after_fail()
             logger.info('Program stopped')
