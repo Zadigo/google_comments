@@ -26,6 +26,7 @@ from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
                              create_filename,
                              get_selenium_browser_instance, get_soup, logger,
                              models, simple_clean_text, text_parser)
+from search import GoogleSearch
 
 COMMENTS_SCROLL_ATTEMPTS = 500
 
@@ -771,12 +772,6 @@ class SearchLinks(SpiderMixin):
 
     def before_launch(self):
         logger.info(f'Starting {self.__class__.__name__}...')
-        self.driver = get_selenium_browser_instance(headless=self.headless)
-        self.driver.get(self.base_url)
-
-        time.sleep(1)
-        self.click_consent()
-        self.driver.maximize_window()
 
         self.search_data_path = search_data_path = MEDIA_PATH.joinpath(self.initial_data_file)
         df = pandas.read_csv(search_data_path, encoding='utf-8')
@@ -784,7 +779,6 @@ class SearchLinks(SpiderMixin):
             raise ValueError("Your file should have a column 'data'")
         if not 'completed' in df.columns:
             df['completed'] = False
-            return df
         else:
             df = df[df['completed'] == False]
 
@@ -854,7 +848,7 @@ class SearchLinks(SpiderMixin):
                 
                 df.loc[item.Index, 'completed'] = True
                 df.to_csv(self.search_data_path, index=False)
-                
+
                 self.current_iteration = self.current_iteration + 1
                 time.sleep(random.randrange(4, 9))
                 continue
