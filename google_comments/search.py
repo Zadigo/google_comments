@@ -295,13 +295,13 @@ class LinkedIn(GoogleSearch):
         profiles_df.to_csv('profiles.csv', index=False)
 
 
-s = LinkedIn()
-# s.get_business_profile('Centre Commercial NICETOILE')
-# s.get_business_profile('SAD Marketing')
-# s.get_business_profile('intimissimi')
-# s.get_business_profile('rouge gorge')
-# s.iterate_urls(filename='searches.csv')
-s.start_spider(
-    'site:linkedin.com/in kedge',
-    use_input=True
-)
+# s = LinkedIn()
+# # s.get_business_profile('Centre Commercial NICETOILE')
+# # s.get_business_profile('SAD Marketing')
+# # s.get_business_profile('intimissimi')
+# # s.get_business_profile('rouge gorge')
+# # s.iterate_urls(filename='searches.csv')
+# s.start_spider(
+#     'site:linkedin.com/in kedge',
+#     use_input=True
+# )
