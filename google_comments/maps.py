@@ -786,7 +786,16 @@ class SearchLinks(SpiderMixin):
             df['completed'] = False
             return df
         else:
-            return df[df['completed'] == False]
+            df = df[df['completed'] == False]
+
+        self.driver = get_selenium_browser_instance(headless=self.headless)
+        self.driver.get(self.base_url)
+
+        time.sleep(1)
+        self.click_consent()
+        self.driver.maximize_window()
+
+        return df
 
     def start_spider(self, take_screenshots=False):
         df = self.before_launch()
