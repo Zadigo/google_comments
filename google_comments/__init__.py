@@ -51,6 +51,8 @@ def clean_dict(item):
         for key, value in item.items():
             if value is None:
                 new_dict[key] = value
+            elif isinstance(value, bool):
+                new_dict[key] = value
             else:
                 if key == 'name':
                     new_dict[key] = clean_value(value, remove_accents=False)
