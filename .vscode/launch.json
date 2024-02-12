@@ -13,6 +13,17 @@
             "justMyCode": true
         },
         {
+            "name": "Python: Google Place",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "args": [
+                "place"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Python: Google Maps",
             "type": "debugpy",
             "request": "launch",
