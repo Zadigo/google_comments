@@ -747,11 +747,12 @@ class SearchLinks(SpiderMixin):
     confusion_pages = []
     base_url = 'https://www.google.com/maps/@50.6476347,3.1369403,14z?entry=ttu'
 
-    def __init__(self, output_folder=None):
+    def __init__(self, output_folder=None, initial_data_file=None):
         self.driver = None
         self.data_file = None
         self.current_iteration = 0
         self.headless = False
+        self.initial_data_file = initial_data_file or 'search_data.csv'
         self.output_filename = create_filename(prefix='search_urls')
         self.search_data_path = None
         super().__init__(output_folder=output_folder)
@@ -777,7 +778,7 @@ class SearchLinks(SpiderMixin):
         self.click_consent()
         self.driver.maximize_window()
 
-        self.search_data_path = search_data_path = MEDIA_PATH.joinpath('search_data.csv')
+        self.search_data_path = search_data_path = MEDIA_PATH.joinpath(self.initial_data_file)
         df = pandas.read_csv(search_data_path, encoding='utf-8')
         if 'data' not in df.columns:
             raise ValueError("Your file should have a column 'data'")
@@ -820,7 +821,7 @@ class SearchLinks(SpiderMixin):
             # scroll the feed or indicate to be
             # an error page
             if self.is_feed_page:
-                self.confusion_pages.append(self.driver.current_url)
+                self.confusion_pages.append([item.data, self.driver.current_url])
                 filename = f'failed_{self.output_filename}'
                 write_csv_file(filename, self.confusion_pages)
 
@@ -1119,6 +1120,15 @@ if __name__ == '__main__':
             '-n',
             type=bool
         )
+
+    if cmd == 'searchlinks':
+        parser.add_argument(
+            '-i',
+            '--initial-data-file',
+            type=str,
+            help="Use another data file than the default 'search_data.csv'"
+        )
+
     namespace = parser.parse_args()
 
     if namespace.comments_scroll_time is not None:
@@ -1147,6 +1157,19 @@ if __name__ == '__main__':
             except KeyboardInterrupt:
                 instance.after_fail()
                 logger.info('Program stopped')
+    elif namespace.name == 'searchlinks':
+        instance = klass(
+            output_folder=namespace.folder,
+            initial_data_file=namespace.initial_data_file
+        )
+        try:
+            instance.start_spider()
+        except Exception as e:
+            instance.after_fail(exception=e)
+            logger.critical(e)
+        except KeyboardInterrupt:
+            instance.after_fail()
+            logger.info('Program stopped')
     else:
         instance = klass(output_folder=namespace.folder)
         try:
