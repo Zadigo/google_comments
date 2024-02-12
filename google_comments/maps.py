@@ -834,6 +834,9 @@ class SearchLinks(SpiderMixin):
                     self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
                     logger.info(f'Created screenshot @ "{filepath}"')
                 
+                df.loc[item.Index, 'completed'] = True
+                df.to_csv(self.search_data_path, index=False)
+                
                 self.current_iteration = self.current_iteration + 1
                 time.sleep(random.randrange(4, 9))
                 continue
