@@ -792,6 +792,15 @@ class SearchLinks(SpiderMixin):
         df = self.before_launch()
 
         for item in df.itertuples(name='Search'):
+            # Some data like "Althéa Fleurs, 1 Pl. du 8 Mai 1945, 16230 Mansle"
+            # returns the google maps direction page which breaks the code
+            # because in this case the search is a city. Continue on error 
+            # and return to the correct page.
+            if '/maps/dir/' in self.current_page_url:
+                logger.error(f"{item.data} triggers the wrong Google page")
+                self.driver.get(self.base_url)
+                continue
+
             input_script = """
             return document.querySelector('input[name="q"]')
             """
