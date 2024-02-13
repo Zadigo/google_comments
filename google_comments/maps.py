@@ -489,7 +489,7 @@ class GooglePlace(GoogleMapsMixin):
     eventually the reviews that were left by the users. A Google Place
     url is required for this automater to function `/maps/place/`"""
 
-    def start_spider(self, url, id_or_reference=None, refresh=False, is_loop=False, maximize_window=True):
+    def start_spider(self, url, id_or_reference=None, is_loop=False, maximize_window=True):
         if not self.is_running:
             self.is_running = True
 
