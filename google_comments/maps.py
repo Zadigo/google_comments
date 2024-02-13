@@ -54,7 +54,7 @@ class GoogleMapsMixin(SpiderMixin):
         logger.info('Starting spider')
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} [{self.temporary_id}]>'
+        return f'<{self.__class__.__name__} [{self.scrap_session_id}]>'
 
     def __del__(self):
         try:
@@ -64,7 +64,7 @@ class GoogleMapsMixin(SpiderMixin):
             logger.info('Program stopped')
 
     def __hash__(self):
-        return hash((self.temporary_id))
+        return hash((self.scrap_session_id))
 
     def sort_comments(self):
         open_menu = """
