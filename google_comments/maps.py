@@ -1,6 +1,5 @@
 import argparse
 import csv
-import sys
 import json
 import pathlib
 import random
@@ -23,6 +22,7 @@ from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
 from google_comments.base import SpiderMixin
 from google_comments.models import GoogleBusiness, Review
 from google_comments.utilities import file_helpers
+from google_comments.utilities.calculation import convert_coordinates
 from google_comments.utilities.file_helpers import write_csv_file
 from google_comments.utilities.text import slugify
 
