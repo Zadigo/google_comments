@@ -1,36 +1,11 @@
-import argparse
-import asyncio
-import csv
 import datetime
-import json
-import os
 import pathlib
-import random
-import re
-import secrets
-import string
-import sys
-import time
 from collections import Counter, defaultdict
 
 import pandas
-import pytz
-from requests.auth import HTTPBasicAuth
-from requests.models import Request
-from requests.sessions import Session
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
+from typing import Literal, Any, Union
 from selenium.webdriver import Edge, Chrome
-from selenium.webdriver.common.keys import Keys
 
-from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
-                             create_argument_parser, create_filename,
-                             get_selenium_browser_instance, get_soup, logger,
-                             models, simple_clean_text, text_parser)
-from google_comments.models import GoogleBusiness, Review
-from google_comments.utilities import encoders, file_helpers
-from google_comments.utilities.file_helpers import write_csv_file
-from google_comments.utilities.text import slugify
 
 
 COMMENTS_SCROLL_ATTEMPTS: Literal[50]
@@ -107,8 +82,17 @@ class GooglePlaces(GoogleMapsMixin):
 
 
 class GooglePlace(GoogleMapsMixin):
-    def start_spider(self, url, refresh=False, is_loop=False,
-                     maximize_window=True) -> None: ...
+    def start_spider(
+        self, 
+        url: str, 
+        refresh: bool = ..., 
+        is_loop: bool = ...,
+        maximize_window: bool = ...
+    ) -> None: ...
+    def iterate_urls(
+        self, 
+        urls: list[str] = ...
+    ) -> None: ...
 
 
 # class SearchLinks(SpiderMixin):
@@ -392,45 +376,3 @@ class GooglePlace(GoogleMapsMixin):
 #             else:
 #                 self.confusion_pages.append(self.driver.current_url)
 #                 logger.error(f'Failed to collect busineses for: "{item.data}"')
-
-
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser('Google reviews')
-#     parser.add_argument(
-#         'name',
-#         type=str,
-#         help='The name of the review parser to use',
-#         choices=['place', 'places', 'searchlinks', 'searchbusinesses']
-#     )
-#     parser.add_argument(
-#         'url',
-#         type=str,
-#         help='The url to visit'
-#     )
-#     parser.add_argument(
-#         '-f',
-#         '--folder',
-#         type=str
-#     )
-#     parser.add_argument(
-#         '-w',
-#         '--webhook',
-#         type=str,
-#         help='The webhook to use in order to send data'
-#     )
-#     namespace = parser.parse_args()
-
-#     if namespace.name == 'place':
-#         klass = GooglePlace
-#     elif namespace.name == 'places':
-#         klass = GooglePlaces
-
-#     result = check_url(namespace.name, namespace.url)
-#     if result:
-#         try:
-#             instance = klass(output_folder=namespace.folder)
-#             instance.start_spider(namespace.url)
-#         except Exception as e:
-#             logger.critical(e)
-#         except KeyboardInterrupt:
-#             logger.info('Program stopped')
