@@ -1,20 +1,18 @@
 import datetime
 import pathlib
 from collections import Counter, defaultdict
+from typing import Any, Literal, Union
 
 import pandas
-from typing import Literal, Any, Union
-from selenium.webdriver import Edge, Chrome
+from selenium.webdriver import Chrome, Edge
 
+COMMENTS_SCROLL_ATTEMPTS: Literal[500]
 
-
-COMMENTS_SCROLL_ATTEMPTS: Literal[50]
-
-COMMENTS_UPDATE_SCROLL_ATTEMPTS: Literal[2]
+# COMMENTS_UPDATE_SCROLL_ATTEMPTS: Literal[2]
 
 FEED_SCROLL_ATTEMPTS: Literal[30]
 
-COMMENTS_SCROLL_WAIT_TIME: Literal[5]
+COMMENTS_SCROLL_WAIT_TIME: Literal[10]
 
 
 class SpiderMixin:
@@ -51,6 +49,7 @@ class SpiderMixin:
 
 class GoogleMapsMixin(SpiderMixin):
     COMMENTS: list = ...
+    scrap_session_id: str = ...
     collect_reviews: bool = ...
     keep_unique_file: bool = ...
     temporary_id: str = ...
@@ -84,8 +83,9 @@ class GooglePlaces(GoogleMapsMixin):
 class GooglePlace(GoogleMapsMixin):
     def start_spider(
         self, 
-        url: str, 
-        refresh: bool = ..., 
+        url: str,
+        comments_scroll_attempts: int = None,
+        id_or_reference: str = None,
         is_loop: bool = ...,
         maximize_window: bool = ...
     ) -> None: ...
