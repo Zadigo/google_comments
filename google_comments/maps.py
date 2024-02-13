@@ -709,10 +709,12 @@ class GooglePlace(GoogleMapsMixin):
             )
 
         if 'completed' in df.columns:
-            df.loc[df['completed'].isna()] = False
+            df.loc[df.completed.isna()] = False
             df = df[df['completed'] == False]
         else:
             df['completed'] = False
+
+        logger.info(f"Loaded {df['url'].count()} urls")
 
         self.driver.maximize_window()
 
