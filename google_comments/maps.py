@@ -12,25 +12,23 @@ import time
 from collections import defaultdict
 
 import pandas
-from google_comments.utilities.calculation import convert_coordinates
-from google_comments.base import SpiderMixin
-from google_comments.models import GoogleBusiness, Review
-from google_comments.utilities import file_helpers
-from google_comments.utilities.file_helpers import write_csv_file
-from google_comments.utilities.text import slugify
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
-                             create_filename,
-                             get_selenium_browser_instance, get_soup, logger,
-                             models, simple_clean_text, text_parser)
-from search import GoogleSearch
+                             create_filename, get_selenium_browser_instance,
+                             get_soup, logger, models, simple_clean_text,
+                             text_parser)
+from google_comments.base import SpiderMixin
+from google_comments.models import GoogleBusiness, Review
+from google_comments.utilities import file_helpers
+from google_comments.utilities.file_helpers import write_csv_file
+from google_comments.utilities.text import slugify
 
 COMMENTS_SCROLL_ATTEMPTS = 500
 
-COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
+# COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
 
 FEED_SCROLL_ATTEMPTS = 30
 
@@ -43,7 +41,10 @@ class GoogleMapsMixin(SpiderMixin):
     keep_unique_file = False
 
     def __init__(self, output_folder=None, headless=False):
-        self.temporary_id = secrets.token_hex(5)
+        # Identifies the unique ID for the current
+        # scroll session which then can be retraced
+        # by the elements that need to
+        self.scrap_session_id = f'gc_{secrets.token_hex(10)}'
         self.driver = get_selenium_browser_instance(headless=headless)
         self.websocket = None
         self.seen_urls_outputted = False
@@ -489,7 +490,7 @@ class GooglePlace(GoogleMapsMixin):
     eventually the reviews that were left by the users. A Google Place
     url is required for this automater to function `/maps/place/`"""
 
-    def start_spider(self, url, id_or_reference=None, is_loop=False, maximize_window=True):
+    def start_spider(self, url, comments_scroll_attempts=None, id_or_reference=None, is_loop=False, maximize_window=True):
         if not self.is_running:
             self.is_running = True
 
