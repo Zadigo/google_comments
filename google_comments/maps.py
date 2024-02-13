@@ -490,7 +490,8 @@ class GooglePlace(GoogleMapsMixin):
     url is required for this automater to function `/maps/place/`"""
 
     def start_spider(self, url, id_or_reference=None, refresh=False, is_loop=False, maximize_window=True):
-        self.is_running = True
+        if not self.is_running:
+            self.is_running = True
 
         if maximize_window:
             self.driver.maximize_window()
@@ -522,7 +523,8 @@ class GooglePlace(GoogleMapsMixin):
         # Get the business url once again because the coordinates
         # can get slightly updated once the map loads completly
         updated_business_url = self.driver.execute_script(
-            """return window.location.href""")
+            """return window.location.href"""
+        )
         business.url = updated_business_url
 
         business.get_gps_coordinates_from_url()
@@ -700,23 +702,22 @@ class GooglePlace(GoogleMapsMixin):
 
         df['is_duplicate'] = df.duplicated(subset=['url'])
         duplicate_rows = df[df['is_duplicate'] == True]
-        if duplicate_rows['url'].count() > 0:
+        if duplicate_rows.url.count() > 0:
             logger.warning(
-                f"{duplicate_rows.count()} duplicate "
+                f"{duplicate_rows.url.count()} duplicate "
                 "urls in your file"
             )
 
-        # Remove urls that we have already visited on
-        # previous run of the spider if the "completed_urls.csv"
-        # file exists in the project
-        df['exists'] = df['url'].isin(completed_urls_df['url'])
-        existing_urls = df[df['exists'] == True]
-        if existing_urls['url'].count():
-            df = df[df['exists'] == False]
+        if 'completed' in df.columns:
+            df.loc[df['completed'].isna()] = False
+            df = df[df['completed'] == False]
+        else:
+            df['completed'] = False
+
+        self.driver.maximize_window()
 
         for item in df.itertuples(name='GooglePlace'):
             try:
-                self.driver.maximize_window()
                 self.start_spider(
                     item.url,
                     is_loop=True,
@@ -728,13 +729,9 @@ class GooglePlace(GoogleMapsMixin):
                 continue
             else:
                 df.loc[item.Index, 'completed'] = True
-                completed_urls_df = df[df['url'] == True]
-                completed_urls_df.to_csv(
-                    completed_urls_path,
-                    index=False,
-                    encoding='utf-8'
-                )
-                time.sleep(random.randrange(18, 25))
+                df[['url', 'completed']].to_csv(file_path, index=False)
+                
+                time.sleep(random.randrange(20, 40))
 
 
 class SearchLinks(SpiderMixin):
@@ -850,7 +847,7 @@ class SearchLinks(SpiderMixin):
                 df.to_csv(self.search_data_path, index=False)
 
                 self.current_iteration = self.current_iteration + 1
-                time.sleep(random.randrange(4, 9))
+                time.sleep(random.randrange(15, 35))
                 continue
 
             # When doing a click, a side modal opens
@@ -924,7 +921,7 @@ class SearchLinks(SpiderMixin):
             df.loc[item.Index, 'completed'] = True
             df.to_csv(self.search_data_path, index=False)
 
-            time.sleep(random.randrange(15, 40))
+            time.sleep(random.randrange(30, 50))
             self.current_iteration = self.current_iteration + 1
             logger.info(
                 f"Completed {self.current_iteration} "
