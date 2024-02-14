@@ -23,6 +23,13 @@ class GoogleSearch(SpiderMixin):
     def current_page_actions(self, search, urls, elements):
         pass
 
+    def after_data_collection(self, df):
+        """Actions to run on the page once the
+        data was collected. This includes for example 
+        updating the dataframe, saving the dataframe to
+        a local file or any other data related actions"""
+        pass
+
     def click_consent(self):
         """Function that clicks on the cookie 
         consent button"""
@@ -60,26 +67,12 @@ class GoogleSearch(SpiderMixin):
             df = pandas.DataFrame({'terms': searches})
 
         df['completed'] = False
-        # for item in df.itertuples():
-        #     self.start_spider(item.terms, is_loop=True)
-        #     df.loc[item.Index, 'completed'] = True
-        #     time.sleep(10)
 
         interval = datetime.timedelta(minutes=1)
 
         total_iterations = 0
         start_date = datetime.datetime.now(tz=pytz.UTC)
         next_execution_date = (start_date + interval)
-
-        def is_valid(value):
-            if value is None:
-                return None
-
-            instance = urlparse(value)
-            if instance.scheme == '' or instance.netloc == '':
-                return None
-
-            return value
 
         while total_iterations < df.terms.count():
             current_date = datetime.datetime.now(tz=pytz.UTC)
@@ -93,12 +86,13 @@ class GoogleSearch(SpiderMixin):
 
                 next_execution_date = next_execution_date + interval
                 total_iterations = total_iterations + 1
-                final_df = self.collected_search[[
-                    'url', 'gmaps_url', 'address', 'telephone'
-                ]]
-                final_df['is_valid'] = final_df['url'].map(is_valid)
-                final_df = final_df[~final_df['url'].isna()]
-                final_df.to_csv('business.csv', index=False)
+                self.after_data_collection(df)
+                # final_df = self.collected_search[[
+                #     'url', 'gmaps_url', 'address', 'telephone'
+                # ]]
+                # final_df['is_valid'] = final_df['url'].map(is_valid)
+                # final_df = final_df[~final_df['url'].isna()]
+                # final_df.to_csv('business.csv', index=False)
                 df.to_csv('searches.csv', index=False)
             time.sleep(2)
 
@@ -155,6 +149,24 @@ class BusinessSearch(GoogleSearch):
         ]
         self.collected_search = pandas.DataFrame([], columns=base_columns)
         super().__init__(output_folder=output_folder)
+
+    def after_data_collection(self, df):
+        def is_valid(value):
+            if value is None:
+                return None
+
+            instance = urlparse(value)
+            if instance.scheme == '' or instance.netloc == '':
+                return None
+
+            return value
+
+        final_df = self.collected_search[[
+            'url', 'gmaps_url', 'address', 'telephone'
+        ]]
+        final_df['is_valid'] = final_df['url'].map(is_valid)
+        final_df = final_df[~final_df['url'].isna()]
+        final_df.to_csv('business.csv', index=False)
 
     def current_page_actions(self, search, urls, elements):
         """Returns information about a given business on
@@ -295,13 +307,16 @@ class LinkedIn(GoogleSearch):
         profiles_df.to_csv('profiles.csv', index=False)
 
 
-s = LinkedIn()
+# s = LinkedIn()
 # s.get_business_profile('Centre Commercial NICETOILE')
 # s.get_business_profile('SAD Marketing')
 # s.get_business_profile('intimissimi')
 # s.get_business_profile('rouge gorge')
 # s.iterate_urls(filename='searches.csv')
-s.start_spider(
-    'site:linkedin.com/in kedge',
-    use_input=True
-)
+# s.start_spider(
+#     'site:linkedin.com/in kedge',
+#     use_input=True
+# )
+
+s = BusinessSearch()
+s.iterate_urls(filename='searches.csv', use_input=True)
