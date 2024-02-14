@@ -1,5 +1,6 @@
 import argparse
 import csv
+import hashlib
 import json
 import pathlib
 import random
@@ -490,7 +491,7 @@ class GooglePlace(GoogleMapsMixin):
     eventually the reviews that were left by the users. A Google Place
     url is required for this automater to function `/maps/place/`"""
 
-    def start_spider(self, url, comments_scroll_attempts=None, is_loop=False, maximize_window=True):
+    def start_spider(self, url, comments_scroll_attempts=None, url_business_id=None, is_loop=False, maximize_window=True):
         if not self.is_running:
             self.is_running = True
 
@@ -522,6 +523,13 @@ class GooglePlace(GoogleMapsMixin):
         details['scrap_id'] = self.scrap_session_id
         details['url_business_id'] = url_business_id
         business = GoogleBusiness(**details)
+
+        # Allows us to identify uniquely the given business
+        # this is useful for identifying business with the
+        # same name or url
+        if business.url_business_id is None:
+            url = business.url_business_id
+            business.url_business_id = hashlib.md5(str(url).encode('utf-8')).hexdigest()
 
         # Get the business url once again because the coordinates
         # can get slightly changed once the map loads completly
