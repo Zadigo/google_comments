@@ -634,7 +634,7 @@ class GooglePlace(GoogleMapsMixin):
                 count = count + 1
                 logger.debug(
                     f"Completed {count} of "
-                    f"{COMMENTS_SCROLL_ATTEMPTS} scrolls"
+                    f"{comments_scroll_attempts} scrolls"
                 )
                 time.sleep(COMMENTS_SCROLL_WAIT_TIME)
 
