@@ -1,5 +1,6 @@
 from typing import Generator
 
+
 def slugify(text: str) -> str: ...
 
 
