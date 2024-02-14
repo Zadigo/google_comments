@@ -715,7 +715,7 @@ class GooglePlace(GoogleMapsMixin):
                 self.start_spider(
                     item.url,
                     is_loop=True,
-                    url_business_id=url_business_id,
+                    url_business_id=item.id,
                     comments_scroll_attempts=comments_scroll_attempts,
                     maximize_window=False
                 )
