@@ -37,6 +37,8 @@ class Review(BaseModel):
 @dataclass
 class GoogleBusiness(BaseModel):
     name: Optional[str] = None
+    scrap_id: Optional[str] = None
+    url_business_id: Optional[str] = None
     url: Optional[str] = None
     feed_url: Optional[str] = None
     address: Optional[str] = None
@@ -50,7 +52,7 @@ class GoogleBusiness(BaseModel):
     additional_information: Optional[str] = None
     telephone: Optional[str] = None
     website: Optional[str] = None
-    reviews: Optional[str] = field(default_factory=list)
+    reviews: Optional[list] = field(default_factory=list)
 
     def as_csv(self) -> list: ...
     def as_dataframe(self) -> pandas.DataFrame: ...
