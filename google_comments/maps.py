@@ -679,7 +679,7 @@ class GooglePlace(GoogleMapsMixin):
             self.collected_businesses = []
             return True
 
-    def iterate_urls(self, comments_scroll_attempts=None, urls=[]):
+    def iterate_urls(self, url_business_id=None, comments_scroll_attempts=None, urls=[]):
         """From a file called `media/google_place_urls.csv` containing a 
         set of Google url places, iterate and extract the comments or the
         business information for each Google Place. This calls `start_spider` 
@@ -721,6 +721,7 @@ class GooglePlace(GoogleMapsMixin):
                 self.start_spider(
                     item.url,
                     is_loop=True,
+                    url_business_id=url_business_id,
                     comments_scroll_attempts=comments_scroll_attempts,
                     maximize_window=False
                 )
