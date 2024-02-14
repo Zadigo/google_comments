@@ -519,6 +519,8 @@ class GooglePlace(GoogleMapsMixin):
                 details['number_of_reviews'] = result.group(1)
 
         details = clean_dict(details)
+        details['scrap_id'] = self.scrap_session_id
+        details['url_business_id'] = url_business_id
         business = GoogleBusiness(**details)
 
         # Get the business url once again because the coordinates
