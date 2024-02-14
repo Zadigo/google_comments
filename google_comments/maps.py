@@ -29,8 +29,6 @@ from google_comments.utilities.text import slugify
 
 COMMENTS_SCROLL_ATTEMPTS = 500
 
-# COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
-
 FEED_SCROLL_ATTEMPTS = 30
 
 COMMENTS_SCROLL_WAIT_TIME = 10
@@ -47,7 +45,6 @@ class GoogleMapsMixin(SpiderMixin):
         # by the elements that need to
         self.scrap_session_id = f'gc_{secrets.token_hex(10)}'
         self.driver = get_selenium_browser_instance(headless=headless)
-        self.websocket = None
         self.seen_urls_outputted = False
         self.filename = None
         self.is_loop = False
@@ -154,6 +151,7 @@ class GoogleMapsMixin(SpiderMixin):
         logger.info(f'Created files: business_{filename}')
 
 
+# TODO: Rewrite the start_spider
 class GooglePlaces(GoogleMapsMixin):
     """This automater uses a Google Maps link that references
     a feed of multiple places to scrap data from : /maps/search/"""
@@ -524,13 +522,6 @@ class GooglePlace(GoogleMapsMixin):
         details['url_business_id'] = url_business_id
         business = GoogleBusiness(**details)
 
-        # Allows us to identify uniquely the given business
-        # this is useful for identifying business with the
-        # same name or url
-        if business.url_business_id is None:
-            url = business.url_business_id
-            business.url_business_id = hashlib.md5(str(url).encode('utf-8')).hexdigest()
-
         # Get the business url once again because the coordinates
         # can get slightly changed once the map loads completly
         updated_business_url = self.driver.execute_script(
@@ -679,7 +670,7 @@ class GooglePlace(GoogleMapsMixin):
             self.collected_businesses = []
             return True
 
-    def iterate_urls(self, url_business_id=None, comments_scroll_attempts=None, urls=[]):
+    def iterate_urls(self, comments_scroll_attempts=None, urls=[]):
         """From a file called `media/google_place_urls.csv` containing a 
         set of Google url places, iterate and extract the comments or the
         business information for each Google Place. This calls `start_spider` 
@@ -697,7 +688,7 @@ class GooglePlace(GoogleMapsMixin):
 
         if 'url' not in list(df.columns):
             raise ValueError("Your file should contain an 'url' column")
-
+        
         df['is_duplicate'] = df.duplicated(subset=['url'])
         duplicate_rows = df[df['is_duplicate'] == True]
         if duplicate_rows.url.count() > 0:
@@ -711,6 +702,9 @@ class GooglePlace(GoogleMapsMixin):
             df = df[df['completed'] == False]
         else:
             df['completed'] = False
+
+        if 'id' not in df.columns:
+            df['id'] = None
 
         logger.info(f"Loaded {df['url'].count()} urls")
 
