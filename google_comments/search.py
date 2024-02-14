@@ -308,15 +308,12 @@ class LinkedIn(GoogleSearch):
 
 
 # s = LinkedIn()
-# s.get_business_profile('Centre Commercial NICETOILE')
-# s.get_business_profile('SAD Marketing')
-# s.get_business_profile('intimissimi')
-# s.get_business_profile('rouge gorge')
-# s.iterate_urls(filename='searches.csv')
+# # s.get_business_profile('Centre Commercial NICETOILE')
+# # s.get_business_profile('SAD Marketing')
+# # s.get_business_profile('intimissimi')
+# # s.get_business_profile('rouge gorge')
+# # s.iterate_urls(filename='searches.csv')
 # s.start_spider(
 #     'site:linkedin.com/in kedge',
 #     use_input=True
 # )
-
-s = BusinessSearch()
-s.iterate_urls(filename='searches.csv', use_input=True)

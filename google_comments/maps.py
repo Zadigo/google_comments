@@ -1,6 +1,4 @@
-import argparse
 import csv
-import sys
 import json
 import pathlib
 import random
@@ -12,24 +10,22 @@ import time
 from collections import defaultdict
 
 import pandas
-from google_comments.utilities.calculation import convert_coordinates
-from google_comments.base import SpiderMixin
-from google_comments.models import GoogleBusiness, Review
-from google_comments.utilities import file_helpers
-from google_comments.utilities.file_helpers import write_csv_file
-from google_comments.utilities.text import slugify
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 from google_comments import (MEDIA_PATH, check_url, clean_dict, constants,
-                             create_filename,
-                             get_selenium_browser_instance, get_soup, logger,
-                             models, simple_clean_text, text_parser)
+                             create_filename, get_selenium_browser_instance,
+                             get_soup, logger, models, simple_clean_text,
+                             text_parser)
+from google_comments.base import SpiderMixin
+from google_comments.models import GoogleBusiness, Review
+from google_comments.utilities import file_helpers
+from google_comments.utilities.calculation import convert_coordinates
+from google_comments.utilities.file_helpers import write_csv_file
+from google_comments.utilities.text import slugify
 
 COMMENTS_SCROLL_ATTEMPTS = 500
-
-COMMENTS_UPDATE_SCROLL_ATTEMPTS = 2
 
 FEED_SCROLL_ATTEMPTS = 30
 
@@ -42,9 +38,11 @@ class GoogleMapsMixin(SpiderMixin):
     keep_unique_file = False
 
     def __init__(self, output_folder=None, headless=False):
-        self.temporary_id = secrets.token_hex(5)
+        # Identifies the unique ID for the current
+        # scroll session which then can be retraced
+        # by the elements that need to
+        self.scrap_session_id = f'gc_{secrets.token_hex(10)}'
         self.driver = get_selenium_browser_instance(headless=headless)
-        self.websocket = None
         self.seen_urls_outputted = False
         self.filename = None
         self.is_loop = False
@@ -52,7 +50,7 @@ class GoogleMapsMixin(SpiderMixin):
         logger.info('Starting spider')
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} [{self.temporary_id}]>'
+        return f'<{self.__class__.__name__} [{self.scrap_session_id}]>'
 
     def __del__(self):
         try:
@@ -62,7 +60,7 @@ class GoogleMapsMixin(SpiderMixin):
             logger.info('Program stopped')
 
     def __hash__(self):
-        return hash((self.temporary_id))
+        return hash((self.scrap_session_id))
 
     def sort_comments(self):
         open_menu = """
@@ -151,6 +149,7 @@ class GoogleMapsMixin(SpiderMixin):
         logger.info(f'Created files: business_{filename}')
 
 
+# TODO: Rewrite the start_spider
 class GooglePlaces(GoogleMapsMixin):
     """This automater uses a Google Maps link that references
     a feed of multiple places to scrap data from : /maps/search/"""
@@ -488,14 +487,15 @@ class GooglePlace(GoogleMapsMixin):
     eventually the reviews that were left by the users. A Google Place
     url is required for this automater to function `/maps/place/`"""
 
-    def start_spider(self, url, id_or_reference=None, refresh=False, is_loop=False, maximize_window=True):
-        self.is_running = True
+    def start_spider(self, url, comments_scroll_attempts=None, url_business_id=None, is_loop=False, maximize_window=True):
+        if not self.is_running:
+            self.is_running = True
 
         if maximize_window:
             self.driver.maximize_window()
 
         # if not self.keep_unique_file and self.filename is not None:
-        self.filename = filename = create_filename(suffix=id_or_reference)
+        self.filename = filename = create_filename(suffix=self.scrap_session_id)
         self.driver.get(url)
 
         # 1. Click on the consent form - This appears
@@ -516,12 +516,15 @@ class GooglePlace(GoogleMapsMixin):
                 details['number_of_reviews'] = result.group(1)
 
         details = clean_dict(details)
+        details['scrap_id'] = self.scrap_session_id
+        details['url_business_id'] = url_business_id
         business = GoogleBusiness(**details)
 
         # Get the business url once again because the coordinates
-        # can get slightly updated once the map loads completly
+        # can get slightly changed once the map loads completly
         updated_business_url = self.driver.execute_script(
-            """return window.location.href""")
+            """return window.location.href"""
+        )
         business.url = updated_business_url
 
         business.get_gps_coordinates_from_url()
@@ -565,7 +568,8 @@ class GooglePlace(GoogleMapsMixin):
             pixels = 2000
             last_positions = []
             return_position = 0
-            while count < COMMENTS_SCROLL_ATTEMPTS:
+            comments_scroll_attempts = comments_scroll_attempts or COMMENTS_SCROLL_ATTEMPTS
+            while count < comments_scroll_attempts:
                 scroll_bottom_script = """
                 const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
                 const el = mainWrapper.querySelector('div[tabindex="-1"]')
@@ -629,7 +633,7 @@ class GooglePlace(GoogleMapsMixin):
                 count = count + 1
                 logger.debug(
                     f"Completed {count} of "
-                    f"{COMMENTS_SCROLL_ATTEMPTS} scrolls"
+                    f"{comments_scroll_attempts} scrolls"
                 )
                 time.sleep(COMMENTS_SCROLL_WAIT_TIME)
 
@@ -664,61 +668,56 @@ class GooglePlace(GoogleMapsMixin):
             self.collected_businesses = []
             return True
 
-    def iterate_urls(self, urls=[]):
+    def iterate_urls(self, comments_scroll_attempts=None, urls=[]):
         """From a file called `media/google_place_urls.csv` containing a 
         set of Google url places, iterate and extract the comments or the
         business information for each Google Place. This calls `start_spider` 
         in a loop passing the current url"""
         file_path = MEDIA_PATH / 'google_place_urls.csv'
-        if file_path.exists():
-            df = pandas.read_csv(
-                MEDIA_PATH / 'google_place_urls.csv',
-                encoding='utf-8'
-            )
+        if urls:
+            if isinstance(urls[0], dict):
+                df = pandas.DataFrame(urls)
+            else:
+                df = pandas.DataFrame({'url': urls})
         else:
-            df = pandas.DataFrame({'url': urls})
-
-        logger.info(f"Loaded {df['url'].count()} urls")
-        df['completed'] = False
-
-        completed_urls_path = MEDIA_PATH / 'completed_urls.csv'
-        if not completed_urls_path.exists():
-            completed_urls_df = pandas.DataFrame(data={'url': []})
-            completed_urls_df.to_csv(
-                completed_urls_path,
-                encoding='utf-8',
-                index=False
-            )
-        else:
-            completed_urls_df = pandas.read_csv(
-                MEDIA_PATH / 'completed_urls.csv'
-            )
+            if file_path.exists():
+                logger.info("Loading urls from file: 'google_place_urls.csv'")
+                df = pandas.read_csv(
+                    MEDIA_PATH / 'google_place_urls.csv',
+                    encoding='utf-8'
+                )
 
         if 'url' not in list(df.columns):
             raise ValueError("Your file should contain an 'url' column")
-
+        
         df['is_duplicate'] = df.duplicated(subset=['url'])
         duplicate_rows = df[df['is_duplicate'] == True]
-        if duplicate_rows['url'].count() > 0:
+        if duplicate_rows.url.count() > 0:
             logger.warning(
-                f"{duplicate_rows.count()} duplicate "
+                f"{duplicate_rows.url.count()} duplicate "
                 "urls in your file"
             )
 
-        # Remove urls that we have already visited on
-        # previous run of the spider if the "completed_urls.csv"
-        # file exists in the project
-        df['exists'] = df['url'].isin(completed_urls_df['url'])
-        existing_urls = df[df['exists'] == True]
-        if existing_urls['url'].count():
-            df = df[df['exists'] == False]
+        if 'completed' in df.columns:
+            df.loc[df.completed.isna()] = False
+            df = df[df['completed'] == False]
+        else:
+            df['completed'] = False
+
+        if 'id' not in df.columns:
+            df['id'] = None
+
+        logger.info(f"Loaded {df['url'].count()} urls")
+
+        self.driver.maximize_window()
 
         for item in df.itertuples(name='GooglePlace'):
             try:
-                self.driver.maximize_window()
                 self.start_spider(
                     item.url,
                     is_loop=True,
+                    url_business_id=item.id,
+                    comments_scroll_attempts=comments_scroll_attempts,
                     maximize_window=False
                 )
             except Exception as e:
@@ -727,13 +726,9 @@ class GooglePlace(GoogleMapsMixin):
                 continue
             else:
                 df.loc[item.Index, 'completed'] = True
-                completed_urls_df = df[df['url'] == True]
-                completed_urls_df.to_csv(
-                    completed_urls_path,
-                    index=False,
-                    encoding='utf-8'
-                )
-                time.sleep(random.randrange(18, 25))
+                df[['url', 'completed']].to_csv(file_path, index=False)
+                
+                time.sleep(random.randrange(20, 40))
 
 
 class SearchLinks(SpiderMixin):
@@ -771,12 +766,6 @@ class SearchLinks(SpiderMixin):
 
     def before_launch(self):
         logger.info(f'Starting {self.__class__.__name__}...')
-        self.driver = get_selenium_browser_instance(headless=self.headless)
-        self.driver.get(self.base_url)
-
-        time.sleep(1)
-        self.click_consent()
-        self.driver.maximize_window()
 
         self.search_data_path = search_data_path = MEDIA_PATH.joinpath(self.initial_data_file)
         df = pandas.read_csv(search_data_path, encoding='utf-8')
@@ -784,14 +773,31 @@ class SearchLinks(SpiderMixin):
             raise ValueError("Your file should have a column 'data'")
         if not 'completed' in df.columns:
             df['completed'] = False
-            return df
         else:
-            return df[df['completed'] == False]
+            df = df[df['completed'] == False]
+
+        self.driver = get_selenium_browser_instance(headless=self.headless)
+        self.driver.get(self.base_url)
+
+        time.sleep(1)
+        self.click_consent()
+        self.driver.maximize_window()
+
+        return df
 
     def start_spider(self, take_screenshots=False):
         df = self.before_launch()
 
         for item in df.itertuples(name='Search'):
+            # Some data like "Althéa Fleurs, 1 Pl. du 8 Mai 1945, 16230 Mansle"
+            # returns the google maps direction page which breaks the code
+            # because in this case the search is a city. Continue on error 
+            # and return to the correct page.
+            if '/maps/dir/' in self.current_page_url:
+                logger.error(f"{item.data} triggers the wrong Google page")
+                self.driver.get(self.base_url)
+                continue
+
             input_script = """
             return document.querySelector('input[name="q"]')
             """
@@ -834,8 +840,11 @@ class SearchLinks(SpiderMixin):
                     self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
                     logger.info(f'Created screenshot @ "{filepath}"')
                 
+                df.loc[item.Index, 'completed'] = True
+                df.to_csv(self.search_data_path, index=False)
+
                 self.current_iteration = self.current_iteration + 1
-                time.sleep(random.randrange(4, 9))
+                time.sleep(random.randrange(15, 35))
                 continue
 
             # When doing a click, a side modal opens
@@ -909,7 +918,7 @@ class SearchLinks(SpiderMixin):
             df.loc[item.Index, 'completed'] = True
             df.to_csv(self.search_data_path, index=False)
 
-            time.sleep(random.randrange(15, 40))
+            time.sleep(random.randrange(30, 50))
             self.current_iteration = self.current_iteration + 1
             logger.info(
                 f"Completed {self.current_iteration} "

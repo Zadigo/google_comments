@@ -27,13 +27,22 @@ BUSINESS_INFORMATION_SCRIPT = """
             // AriaLabel to get business name
             Array.from(document.querySelectorAll('div[role="main"][aria-label]'))[0].ariaLabel
         )
-        let address = evaluateXpath('//button[contains(@aria-label, "Adresse:")]')
+        let address = (
+            evaluateXpath('//button[contains(@aria-label, "Adresse:")]') ||
+            evaluateXpath('//button[contains(@aria-label, "Address:")]')
+        )
         let rating = document.querySelector('span[role="img"]').ariaLabel
         let numberOfReviews = evaluateXpath('//div[contains(@class, "F7nice")]/span[2]')
-        let telephone = evaluateXpath('//button[contains(@data-tooltip, "Copier le numéro de téléphone")][contains(@aria-label, "téléphone:")]')
+        let telephone = (
+            evaluateXpath('//button[contains(@data-tooltip, "Copier le numéro de téléphone")][contains(@aria-label, "téléphone:")]') ||
+            evaluateXpath('//button[contains(@aria-label, "Phone:")]')
+        )
         let category = evaluateXpath('//button[contains(@jsaction, "pane.rating.category")]')
 
-        let websiteElement = resolveXpath('//a[contains(@aria-label, "Site Web:")]')
+        let websiteElement = (
+            resolveXpath('//a[contains(@aria-label, "Site Web:")]') ||
+            resolveXpath('//a[contains(@aria-label, "Website:")]')
+        )
         let website = websiteElement && websiteElement.href
 
         let businessType = getText(resolveXpath('//button[contains(@jsaction, "\.category")]'))
@@ -49,7 +58,10 @@ BUSINESS_INFORMATION_SCRIPT = """
             website,
             business_type: businessType,
             permanently_closed: permanentlyClosed !== null,
-            additional_information: evaluateXpath('//div[contains(@aria-label, "Informations")][@role="region"][contains(@class, "m6QErb")]')
+            additional_information: (
+                evaluateXpath('//div[contains(@aria-label, "Informations")][@role="region"][contains(@class, "m6QErb")]') ||
+                evaluateXpath('//div[contains(@aria-label, "Information")][@role="region"][contains(@class, "m6QErb")]')
+            )
         }
     }
 

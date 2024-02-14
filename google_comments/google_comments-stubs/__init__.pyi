@@ -11,6 +11,8 @@ PROXY_IP_ADDRESS: str
 
 PROJECT_PATH: pathlib.Path
 
+DATA_PATH: pathlib.Path
+
 MEDIA_PATH: pathlib.Path
 
 

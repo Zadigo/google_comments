@@ -23,6 +23,8 @@ PROJECT_PATH = pathlib.Path(__file__).parent.absolute()
 
 MEDIA_PATH = PROJECT_PATH / 'media'
 
+DATA_PATH = PROJECT_PATH / 'data'
+
 dotenv.load_dotenv(PROJECT_PATH / '.env')
 
 
@@ -50,6 +52,8 @@ def clean_dict(item):
         new_dict = {}
         for key, value in item.items():
             if value is None:
+                new_dict[key] = value
+            elif isinstance(value, bool):
                 new_dict[key] = value
             else:
                 if key == 'name':

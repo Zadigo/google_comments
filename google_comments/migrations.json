@@ -1,0 +1,33 @@
+{
+    "id": "b63e7e582a",
+    "date": "2023-10-22 16:42:09.345213",
+    "number": 8,
+    "tables": [
+        {
+            "name": "seen_urls",
+            "fields": [
+                {
+                    "name": "url",
+                    "verbose_name": null,
+                    "params": [
+                        "url",
+                        "text",
+                        "not null"
+                    ]
+                },
+                {
+                    "name": "visited",
+                    "verbose_name": null,
+                    "params": [
+                        "visited",
+                        "text",
+                        "not null",
+                        "default",
+                        0
+                    ]
+                }
+            ],
+            "indexes": []
+        }
+    ]
+}
