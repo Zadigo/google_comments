@@ -490,7 +490,7 @@ class GooglePlace(GoogleMapsMixin):
     eventually the reviews that were left by the users. A Google Place
     url is required for this automater to function `/maps/place/`"""
 
-    def start_spider(self, url, comments_scroll_attempts=None, id_or_reference=None, is_loop=False, maximize_window=True):
+    def start_spider(self, url, comments_scroll_attempts=None, is_loop=False, maximize_window=True):
         if not self.is_running:
             self.is_running = True
 
@@ -669,7 +669,7 @@ class GooglePlace(GoogleMapsMixin):
             self.collected_businesses = []
             return True
 
-    def iterate_urls(self, urls=[]):
+    def iterate_urls(self, comments_scroll_attempts=None, urls=[]):
         """From a file called `media/google_place_urls.csv` containing a 
         set of Google url places, iterate and extract the comments or the
         business information for each Google Place. This calls `start_spider` 

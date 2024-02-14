@@ -57,6 +57,14 @@ class Review(BaseModel):
 
 @dataclass
 class GoogleBusiness(BaseModel):
+    """This is the base model for creating a new
+    Google business JSON item for data
+    standardization/consistency purposes
+    
+    >>> data = {'name': 'Zara'}
+    ... item = GoogleBusiness(**data)
+    """
+    
     name: str = None
     url: str = None
     feed_url: str = None
