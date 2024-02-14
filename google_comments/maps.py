@@ -677,7 +677,10 @@ class GooglePlace(GoogleMapsMixin):
         in a loop passing the current url"""
         file_path = MEDIA_PATH / 'google_place_urls.csv'
         if urls:
-            df = pandas.DataFrame({'url': urls})
+            if isinstance(urls[0], dict):
+                df = pandas.DataFrame(urls)
+            else:
+                df = pandas.DataFrame({'url': urls})
         else:
             if file_path.exists():
                 logger.info("Loading urls from file: 'google_place_urls.csv'")
