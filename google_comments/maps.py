@@ -524,7 +524,7 @@ class GooglePlace(GoogleMapsMixin):
         business = GoogleBusiness(**details)
 
         # Get the business url once again because the coordinates
-        # can get slightly updated once the map loads completly
+        # can get slightly changed once the map loads completly
         updated_business_url = self.driver.execute_script(
             """return window.location.href"""
         )
