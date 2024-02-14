@@ -674,13 +674,14 @@ class GooglePlace(GoogleMapsMixin):
         business information for each Google Place. This calls `start_spider` 
         in a loop passing the current url"""
         file_path = MEDIA_PATH / 'google_place_urls.csv'
-        if file_path.exists():
-            df = pandas.read_csv(
-                MEDIA_PATH / 'google_place_urls.csv',
-                encoding='utf-8'
-            )
-        else:
+        if urls:
             df = pandas.DataFrame({'url': urls})
+        else:
+            if file_path.exists():
+                df = pandas.read_csv(
+                    MEDIA_PATH / 'google_place_urls.csv',
+                    encoding='utf-8'
+                )
 
         if 'url' not in list(df.columns):
             raise ValueError("Your file should contain an 'url' column")
