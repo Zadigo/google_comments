@@ -66,6 +66,8 @@ class GoogleBusiness(BaseModel):
     """
     
     name: str = None
+    scrap_id: str = None
+    url_business_id: str = None
     url: str = None
     feed_url: str = None
     address: str = None
