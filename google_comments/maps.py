@@ -569,7 +569,8 @@ class GooglePlace(GoogleMapsMixin):
             pixels = 2000
             last_positions = []
             return_position = 0
-            while count < COMMENTS_SCROLL_ATTEMPTS:
+            comments_scroll_attempts = comments_scroll_attempts or COMMENTS_SCROLL_ATTEMPTS
+            while count < comments_scroll_attempts:
                 scroll_bottom_script = """
                 const mainWrapper = document.querySelector('div[role="main"][aria-label="$business_name"]')
                 const el = mainWrapper.querySelector('div[tabindex="-1"]')
@@ -678,6 +679,7 @@ class GooglePlace(GoogleMapsMixin):
             df = pandas.DataFrame({'url': urls})
         else:
             if file_path.exists():
+                logger.info("Loading urls from file: 'google_place_urls.csv'")
                 df = pandas.read_csv(
                     MEDIA_PATH / 'google_place_urls.csv',
                     encoding='utf-8'
@@ -709,6 +711,7 @@ class GooglePlace(GoogleMapsMixin):
                 self.start_spider(
                     item.url,
                     is_loop=True,
+                    comments_scroll_attempts=comments_scroll_attempts,
                     maximize_window=False
                 )
             except Exception as e:
