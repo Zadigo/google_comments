@@ -1,0 +1,35 @@
+version: '3.7'
+
+volumes:
+  PostgresData:
+  NginxLogs:
+  RedisData:
+
+networks:
+  myprosite_network:
+    driver: bridge
+
+services:
+  app:
+    build: .
+    container_name: app_google_comments
+    ports:
+      - 4444:4444
+    volumes:
+      - .:/media:ro
+    networks:
+      - google_comments_network
+
+  redis:
+    build: ./docker/redis
+    container_name: google_comments_redis
+    # https://stackoverflow.com/questions/68461172/docker-compose-redis-password-via-environment-variable
+    ports:
+      - 6379:6015
+    restart: always
+    volumes:
+      - RedisData:/data
+      - ./var/redis.log:/data/redis.log:rw
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - myprosite_network
