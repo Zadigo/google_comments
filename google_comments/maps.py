@@ -495,7 +495,8 @@ class GooglePlace(GoogleMapsMixin):
             self.driver.maximize_window()
 
         # if not self.keep_unique_file and self.filename is not None:
-        self.filename = filename = create_filename(suffix=self.scrap_session_id)
+        self.filename = filename = create_filename(
+            suffix=self.scrap_session_id)
         self.driver.get(url)
 
         # 1. Click on the consent form - This appears
