@@ -31,7 +31,7 @@ BUSINESS_INFORMATION_SCRIPT = """
             evaluateXpath('//button[contains(@aria-label, "Adresse:")]') ||
             evaluateXpath('//button[contains(@aria-label, "Address:")]')
         )
-        let rating = document.querySelector('span[role="img"]').ariaLabel
+        let business_rating = document.querySelector('span[role="img"]').ariaLabel
         let numberOfReviews = evaluateXpath('//div[contains(@class, "F7nice")]/span[2]')
         let telephone = (
             evaluateXpath('//button[contains(@data-tooltip, "Copier le numéro de téléphone")][contains(@aria-label, "téléphone:")]') ||
@@ -52,7 +52,7 @@ BUSINESS_INFORMATION_SCRIPT = """
             name,
             url: window.location.href,
             address,
-            rating,
+            business_rating,
             number_of_reviews: numberOfReviews,
             telephone,
             website,

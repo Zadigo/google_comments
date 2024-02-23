@@ -71,7 +71,7 @@ class GoogleBusiness(BaseModel):
     url: str = None
     feed_url: str = None
     address: str = None
-    rating: str = None
+    business_rating: str = None
     latitude: int = None
     longitude: int = None
     number_of_reviews: int = None
@@ -90,7 +90,7 @@ class GoogleBusiness(BaseModel):
         rows = []
         for review in self.reviews:
             row = [
-                self.name, self.url, self.address, self.rating,
+                self.name, self.url, self.address, self.business_rating,
                 self.number_of_reviews, review['period'],
                 review['text']
             ]
@@ -123,7 +123,7 @@ class GoogleBusiness(BaseModel):
             data['url'].append(self.url)
             data['feed_url'].append(self.feed_url)
             data['address'].append(self.address)
-            data['company_rating'].append(self.rating)
+            data['business_rating'].append(self.business_rating)
             data['latitude'].append(self.latitude)
             data['longitude'].append(self.longitude)
             data['number_of_reviews'].append(self.number_of_reviews)
