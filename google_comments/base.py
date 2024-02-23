@@ -1,11 +1,12 @@
+import asyncio
 import datetime
 import time
 from collections import Counter
 
 import pytz
+import requests
 
 from google_comments import MEDIA_PATH, constants, logger
-
 
 FEED_SCROLL_ATTEMPTS = 30
 
@@ -14,6 +15,7 @@ class SpiderMixin:
     """Global base functionnalities to be implemented
     for a Google Maps or a Google Search spider"""
 
+    webhooks = []
     collected_businesses = []
 
     def __init__(self, output_folder=None):
@@ -79,6 +81,29 @@ class SpiderMixin:
         if result >= limit:
             return True
         return False
+
+    def trigger_webhooks(self, data):
+        async def sender(url):
+            try:
+                response = requests.post(url, json=data)
+            except Exception as e:
+                logger.error(e)
+            else:
+                if response.ok:
+                    return response.json()
+                else:
+                    logger.warning(response.json())
+                return {}
+
+        async def main():
+            awaitables = []
+            for url in self.webhooks:
+                awaitables.append(sender(url))
+
+            for awaitable in asyncio.as_completed(awaitables):
+                data = await awaitable
+
+        asyncio.run(main())
 
     def scroll_feed(self):
         """Function used to scroll a Google Maps feed. A feed
