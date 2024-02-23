@@ -688,9 +688,13 @@ class GooglePlace(GoogleMapsMixin):
                     encoding='utf-8'
                 )
 
-        if 'url' not in list(df.columns):
+        if 'url' not in df.columns:
             raise ValueError("Your file should contain an 'url' column")
-        
+
+        if df.url.count() == 0:
+            logger.info("No url(s) were found")
+            return False
+
         df['is_duplicate'] = df.duplicated(subset=['url'])
         duplicate_rows = df[df['is_duplicate'] == True]
         if duplicate_rows.url.count() > 0:
