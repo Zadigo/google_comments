@@ -511,6 +511,9 @@ class GooglePlace(GoogleMapsMixin):
 
         number_of_reviews = details['number_of_reviews']
         if number_of_reviews is not None:
+            # Some numbers have this format "1,334". Just remove
+            # the comma so that we can get the full numerical value
+            number_of_reviews = number_of_reviews.replace(',', '')
             result = re.search(r'(\d+)', number_of_reviews)
 
             if result:
@@ -772,7 +775,8 @@ class SearchLinks(SpiderMixin):
     def before_launch(self):
         logger.info(f'Starting {self.__class__.__name__}...')
 
-        self.search_data_path = search_data_path = MEDIA_PATH.joinpath(self.initial_data_file)
+        self.search_data_path = search_data_path = MEDIA_PATH.joinpath(
+            self.initial_data_file)
         df = pandas.read_csv(search_data_path, encoding='utf-8')
         if 'data' not in df.columns:
             raise ValueError("Your file should have a column 'data'")
