@@ -800,7 +800,7 @@ class SearchLinks(SpiderMixin):
         for item in df.itertuples(name='Search'):
             # Some data like "Althéa Fleurs, 1 Pl. du 8 Mai 1945, 16230 Mansle"
             # returns the google maps direction page which breaks the code
-            # because in this case the search is a city. Continue on error 
+            # because in this case the search is a city. Continue on error
             # and return to the correct page.
             if '/maps/dir/' in self.current_page_url:
                 logger.error(f"{item.data} triggers the wrong Google page")
@@ -836,7 +836,8 @@ class SearchLinks(SpiderMixin):
             # scroll the feed or indicate to be
             # an error page
             if self.is_feed_page:
-                self.confusion_pages.append([item.data, self.driver.current_url])
+                self.confusion_pages.append(
+                    [item.data, self.driver.current_url])
                 filename = f'failed_{self.output_filename}'
                 write_csv_file(filename, self.confusion_pages)
 
@@ -844,11 +845,11 @@ class SearchLinks(SpiderMixin):
                 filepath = f'screenshots/{filename}.png'
 
                 logger.warning(f'Is a feed page: "{item.data}"')
-                
+
                 if take_screenshots:
                     self.driver.get_screenshot_as_file(MEDIA_PATH / filepath)
                     logger.info(f'Created screenshot @ "{filepath}"')
-                
+
                 df.loc[item.Index, 'completed'] = True
                 df.to_csv(self.search_data_path, index=False)
 
@@ -889,7 +890,8 @@ class SearchLinks(SpiderMixin):
                     # While we are on the page, if we actually are on a /maps/place/
                     # implement simple additional pieces of the business eventually
                     # could be used later on
-                    business_information = self.driver.execute_script(constants.BUSINESS_INFORMATION_SCRIPT)
+                    business_information = self.driver.execute_script(
+                        constants.BUSINESS_INFORMATION_SCRIPT)
                 except:
                     pass
                 else:
@@ -911,7 +913,7 @@ class SearchLinks(SpiderMixin):
                 logger.info(f"Got url number {item.Index + 1}: \"{url}\"")
             else:
                 self.URLS.append({
-                    'search': item.data, 
+                    'search': item.data,
                     'url': None,
                     'name': None,
                     'rating': None,
@@ -1094,107 +1096,116 @@ class SearchBusinesses(SearchLinks):
                 logger.error(f'Failed to collect busineses for: "{item.data}"')
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Google reviews')
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser('Google reviews')
 
-    arguments = sys.argv[1:]
-    
-    cmd = arguments[0]
-    parser.add_argument(
-        'name',
-        type=str,
-        help='The name of the review parser to use',
-        choices=['place', 'places', 'searchlinks', 'searchbusinesses']
-    )
-    parser.add_argument(
-        '-f',
-        '--folder',
-        type=str
-    )
-    parser.add_argument(
-        '-w',
-        '--webhook',
-        type=str,
-        help='The webhook to use in order to send data'
-    )
-    parser.add_argument(
-        '-cwt',
-        '--comments-scroll-time',
-        type=int
-    )
-    parser.add_argument(
-        '-csa',
-        '--comment-scroll-attempts',
-        type=int
-    )
-    
-    if cmd != 'searchlinks':
-        parser.add_argument(
-            'url',
-            type=str,
-            help='The url to visit'
-        )
-        parser.add_argument(
-            '-n',
-            type=bool
-        )
+#     arguments = sys.argv[1:]
 
-    if cmd == 'searchlinks':
-        parser.add_argument(
-            '-i',
-            '--initial-data-file',
-            type=str,
-            help="Use another data file than the default 'search_data.csv'"
-        )
+#     cmd = arguments[0]
+#     parser.add_argument(
+#         'name',
+#         type=str,
+#         help='The name of the review parser to use',
+#         choices=['place', 'places', 'searchlinks', 'searchbusinesses']
+#     )
+#     parser.add_argument(
+#         '-f',
+#         '--folder',
+#         type=str
+#     )
+#     parser.add_argument(
+#         '-w',
+#         '--webhook',
+#         type=str,
+#         help='The webhook to use in order to send data'
+#     )
+#     parser.add_argument(
+#         '-cwt',
+#         '--comments-scroll-time',
+#         type=int
+#     )
+#     parser.add_argument(
+#         '-csa',
+#         '--comment-scroll-attempts',
+#         type=int
+#     )
 
-    namespace = parser.parse_args()
+#     if cmd != 'searchlinks':
+#         parser.add_argument(
+#             'url',
+#             type=str,
+#             help='The url to visit'
+#         )
+#         parser.add_argument(
+#             '-n',
+#             type=bool
+#         )
 
-    if namespace.comments_scroll_time is not None:
-        COMMENTS_SCROLL_WAIT_TIME = namespace.comments_scroll_time
+#     if cmd == 'searchlinks':
+#         parser.add_argument(
+#             '-i',
+#             '--initial-data-file',
+#             type=str,
+#             help="Use another data file than the default 'search_data.csv'"
+#         )
 
-    if namespace.comment_scroll_attempts is not None:
-        COMMENTS_SCROLL_ATTEMPTS = namespace.comment_scroll_attempts
+#     namespace = parser.parse_args()
 
-    if namespace.name == 'place':
-        klass = GooglePlace
-    elif namespace.name == 'places':
-        klass = GooglePlaces
-    elif namespace.name == 'searchlinks':
-        klass = SearchLinks
+#     if namespace.comments_scroll_time is not None:
+#         COMMENTS_SCROLL_WAIT_TIME = namespace.comments_scroll_time
 
-    if namespace.name == 'place' or namespace.name == 'places':
-        result = check_url(namespace.name, namespace.url)
+#     if namespace.comment_scroll_attempts is not None:
+#         COMMENTS_SCROLL_ATTEMPTS = namespace.comment_scroll_attempts
 
-        if result:
-            instance = klass(output_folder=namespace.folder)
-            try:
-                instance.start_spider(namespace.url)
-            except Exception as e:
-                instance.after_fail(exception=e)
-                logger.critical(e)
-            except KeyboardInterrupt:
-                instance.after_fail()
-                logger.info('Program stopped')
-    elif namespace.name == 'searchlinks':
-        instance = klass(
-            output_folder=namespace.folder,
-            initial_data_file=namespace.initial_data_file
-        )
-        try:
-            instance.start_spider()
-        except Exception as e:
-            instance.after_fail(exception=e)
-            logger.critical(e)
-        except KeyboardInterrupt:
-            instance.after_fail()
-            logger.info('Program stopped')
-    else:
-        instance = klass(output_folder=namespace.folder)
-        try:
-            instance.start_spider()
-        except Exception as e:
-            instance.after_fail(exception=e)
-            logger.critical(e)
-        except KeyboardInterrupt:
-            instance.after_fail()
-            logger.info('Program stopped')
+#     if namespace.name == 'place':
+#         klass = GooglePlace
+#     elif namespace.name == 'places':
+#         klass = GooglePlaces
+#     elif namespace.name == 'searchlinks':
+#         klass = SearchLinks
+
+#     if namespace.name == 'place' or namespace.name == 'places':
+#         result = check_url(namespace.name, namespace.url)
+
+#         if result:
+#             instance = klass(output_folder=namespace.folder)
+#             try:
+#                 instance.start_spider(namespace.url)
+#             except Exception as e:
+#                 instance.after_fail(exception=e)
+#                 logger.critical(e)
+#             except KeyboardInterrupt:
+#                 instance.after_fail()
+#                 logger.info('Program stopped')
+#     elif namespace.name == 'searchlinks':
+#         instance = klass(
+#             output_folder=namespace.folder,
+#             initial_data_file=namespace.initial_data_file
+#         )
+#         try:
+#             instance.start_spider()
+#         except Exception as e:
+#             instance.after_fail(exception=e)
+#             logger.critical(e)
+#         except KeyboardInterrupt:
+#             instance.after_fail()
+#             logger.info('Program stopped')
+#     else:
+#         instance = klass(output_folder=namespace.folder)
+#         try:
+#             instance.start_spider()
+#         except Exception as e:
+#             instance.after_fail(exception=e)
+#             logger.critical(e)
+#         except KeyboardInterrupt:
+#             instance.after_fail()
+#             logger.info('Program stopped')
+
+# urls = [
+#     'https://www.google.com/maps/place/Zara/data=!4m7!3m6!1s0x12cddaa6e6729a41:0xaf348ce96e973e9e!8m2!3d43.699597!4d7.268664!16s%2Fg%2F1yl4901kd!19sChIJQZpy5qbazRIRnj6XbumMNK8?authuser=0&hl=en&rclk=1',
+#     'https://www.google.com/maps/place/ZARA/data=!4m7!3m6!1s0x12cdd170990fcbb1:0x4d8147cf53af8fdb!8m2!3d43.658783!4d7.195353!16s%2Fg%2F1tvynvr8!19sChIJscsPmXDRzRIR24-vU89HgU0?authuser=0&hl=en&rclk=1'
+# ]
+# instance = GooglePlace(output_folder='zara')
+# instance.collect_reviews = False
+# instance.webhooks = ['http://127.0.0.1:8000/api/v1/business/create']
+# instance.iterate_urls(urls=urls, comments_scroll_attempts=5)
