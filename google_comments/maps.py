@@ -732,7 +732,7 @@ class GooglePlace(GoogleMapsMixin):
             else:
                 df.loc[item.Index, 'completed'] = True
                 df[['url', 'completed']].to_csv(file_path, index=False)
-                
+
                 time.sleep(random.randrange(20, 40))
 
 
