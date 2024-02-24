@@ -141,11 +141,11 @@ class GoogleMapsMixin(SpiderMixin):
         if self.collect_reviews:
             with open(self.output_folder_path.joinpath(f'{filename}_comments.json'), mode='w') as fp2:
                 json.dump(self.COMMENTS, fp2)
+
             self.create_comments_dataframe()
             logger.info(f'Created files: {filename} and {filename}_comments')
 
-        # TODO: Reimplement this functionnality later on
-        # self.trigger_webhooks(data=business.as_json())
+        self.trigger_webhooks(data=business.as_json())
         logger.info(f'Created files: business_{filename}')
 
 
