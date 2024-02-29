@@ -7,10 +7,9 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-from google_comments import (MEDIA_PATH, constants,
-                             create_filename, get_selenium_browser_instance,
-                             get_soup, logger, models, simple_clean_text,
-                             text_parser)
+from google_comments import (MEDIA_PATH, constants, create_filename,
+                             get_selenium_browser_instance, get_soup, logger,
+                             models, simple_clean_text, text_parser)
 from google_comments.base import SpiderMixin
 from google_comments.models import GoogleBusiness
 from google_comments.utilities import file_helpers
@@ -56,10 +55,12 @@ class SearchLinks(SpiderMixin):
         logger.info(f'Starting {self.__class__.__name__}...')
 
         self.search_data_path = search_data_path = MEDIA_PATH.joinpath(
-            self.initial_data_file)
+            self.initial_data_file
+        )
         df = pandas.read_csv(search_data_path, encoding='utf-8')
         if 'data' not in df.columns:
             raise ValueError("Your file should have a column 'data'")
+        
         if not 'completed' in df.columns:
             df['completed'] = False
         else:
@@ -179,7 +180,7 @@ class SearchLinks(SpiderMixin):
                     model.get_gps_coordinates_from_url()
                     data.update({
                         'name': model.name,
-                        'rating': model.rating,
+                        'rating': model.business_rating,
                         'number_of_reviews': None,
                         'latitude': model.latitude,
                         'longitude': model.longitude,
@@ -374,3 +375,7 @@ class SearchBusinesses(SearchLinks):
             else:
                 self.confusion_pages.append(self.driver.current_url)
                 logger.error(f'Failed to collect busineses for: "{item.data}"')
+
+
+instance = SearchLinks()
+instance.start_spider()

@@ -42,7 +42,7 @@ class GoogleBusiness(BaseModel):
     url: Optional[str] = None
     feed_url: Optional[str] = None
     address: Optional[str] = None
-    rating: Optional[str] = None
+    business_rating: Optional[str] = None
     latitude: Optional[int] = None
     longitude: Optional[int] = None
     number_of_reviews: int = None
