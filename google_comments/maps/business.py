@@ -730,3 +730,8 @@ class GooglePlace(GoogleMapsMixin):
                 df[['url', 'completed']].to_csv(file_path, index=False)
 
                 time.sleep(random.randrange(20, 40))
+
+
+# instance = GooglePlace(output_folder='flunch')
+# instance.collect_reviews = False
+# instance.iterate_urls()
